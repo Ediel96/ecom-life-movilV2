@@ -3,10 +3,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text as RNText } from 'react-native';
 import { useAppSelector } from '../store/hooks';
-import DashboardScreen from '../screens/DashboardScreen';
-import CategoriesScreen from '../screens/CategoriesScreen';
-import AccountsScreen from '../screens/AccountsScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import DashboardScreen from '../screens/DashboardScreenStyled';
+import CategoriesScreen from '../screens/CategoriesScreenStyled';
+import AccountsScreen from '../screens/AccountsScreenStyled';
+import SettingsScreen from '../screens/SettingsScreenStyled';
 import LoginScreen from '../screens/LoginScreenStyled';
 
 export type RootTabParamList = {
