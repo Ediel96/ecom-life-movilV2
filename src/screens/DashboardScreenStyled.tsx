@@ -115,7 +115,7 @@ export default function DashboardScreen() {
                 radius={120}
                 innerRadius={80}
                 centerLabelComponent={() => (
-                  <View style={styles.centerLabel}>
+                  <View style={[styles.centerLabel, isDark ? styles.centerLabelDark : styles.centerLabelLight]}>
                     <Text style={[styles.totalAmount, isDark ? styles.textWhite : styles.textDark]}>
                       ${totalExpenses}
                     </Text>
@@ -306,6 +306,18 @@ const styles = StyleSheet.create({
   },
   centerLabel: {
     alignItems: 'center',
+  },
+  centerLabelDark: {
+    backgroundColor: '#1F2937',
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  centerLabelLight: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   totalAmount: {
     fontSize: 28,
