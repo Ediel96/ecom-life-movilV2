@@ -22,7 +22,7 @@ export default function DashboardScreen() {
   // Calculate totals per category
   const categoryTotals: CategoryWithTotal[] = categories.map(cat => {
     const total = transactions
-      .filter(t => t.categoryId === cat.id)
+      .filter(t => t.category_id === cat.id)
       .reduce((sum, t) => sum + t.amount, 0);
     return { ...cat, total };
   });
@@ -34,7 +34,7 @@ export default function DashboardScreen() {
     .filter(cat => cat.total > 0)
     .map(cat => ({
       value: cat.total,
-      color: cat.color,
+      color: cat.color_fill,
       text: cat.name,
     }));
 
@@ -44,7 +44,7 @@ export default function DashboardScreen() {
     .reverse()
     .map(t => ({
       ...t,
-      category: categories.find(c => c.id === t.categoryId),
+      category: categories.find(c => c.id === t.category_id),
     }));
 
   return (

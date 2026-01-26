@@ -1,31 +1,137 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { TransactionsState, Transaction } from '../../types';
+import api from '../../services/api';
 
 const initialState: TransactionsState = {
-  list: [
-    { id: '1', categoryId: '1', amount: 45000, description: 'Almuerzo', date: '2026-01-20', type: 'expense' },
-    { id: '2', categoryId: '2', amount: 25000, description: 'Uber', date: '2026-01-20', type: 'expense' },
-    { id: '3', categoryId: '1', amount: 80000, description: 'Supermercado', date: '2026-01-19', type: 'expense' },
-    { id: '4', categoryId: '3', amount: 60000, description: 'Cine', date: '2026-01-18', type: 'expense' },
-    { id: '5', categoryId: '4', amount: 120000, description: 'Farmacia', date: '2026-01-17', type: 'expense' },
-    { id: '6', categoryId: '5', amount: 200000, description: 'Curso online', date: '2026-01-16', type: 'expense' },
-    { id: '7', categoryId: '6', amount: 150000, description: 'Internet', date: '2026-01-15', type: 'expense' },
-    { id: '8', categoryId: '2', amount: 35000, description: 'Gasolina', date: '2026-01-14', type: 'expense' },
-  ],
+  list: [],
+  loading: false,
+  error: null,
 };
+
+export const fetchTransactions = createAsyncThunk(
+  'transactions/fetchTransactions',
+  async (_, thunkAPI) => {
+    try {
+      // Replace with your API call
+      const response = await api.transactions.getAll();
+      const data = response.data;
+      return data as Transaction[];
+    } catch (error) {
+      return thunkAPI.rejectWithValue('Failed to fetch transactions');
+    }
+  }
+);
+
+export const createTransaction = createAsyncThunk(
+  'transactions/createTransaction',
+  async (transaction: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>, thunkAPI) => {
+    try {
+      const response = await api.transactions.create(transaction);
+      return response.data as Transaction;
+    } catch (error) {
+      return thunkAPI.rejectWithValue('Failed to create transaction');
+    }
+  }
+);
+
+export const updateTransactionThunk = createAsyncThunk(
+  'transactions/updateTransaction',
+  async (transaction: Transaction, thunkAPI) => {
+    try {
+      const response = await api.transactions.update(transaction.id, transaction);
+      return response.data as Transaction;
+    } catch (error) {
+      return thunkAPI.rejectWithValue('Failed to update transaction');
+    }
+  }
+);
+
+export const deleteTransactionThunk = createAsyncThunk(
+  'transactions/deleteTransaction',
+  async (id: number, thunkAPI) => {
+    try {
+      await api.transactions.delete(id);
+      return id;
+    } catch (error) {
+      return thunkAPI.rejectWithValue('Failed to delete transaction');
+    }
+  }
+);  
+
 
 const transactionsSlice = createSlice({
   name: 'transactions',
   initialState,
   reducers: {
-    addTransaction: (state, action: PayloadAction<Transaction>) => {
+    addTransactionLocal: (state, action: PayloadAction<Transaction>) => {
       state.list.unshift(action.payload);
     },
-    deleteTransaction: (state, action: PayloadAction<string>) => {
+    deleteTransactionLocal: (state, action: PayloadAction<number>) => {
       state.list = state.list.filter(t => t.id !== action.payload);
     },
   },
+  extraReducers: (builder) => {
+    // 📥 Fetch Transactions
+    builder
+      .addCase(fetchTransactions.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchTransactions.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list = action.payload;
+      })
+      .addCase(fetchTransactions.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // ➕ Create Transaction
+    builder
+      .addCase(createTransaction.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(createTransaction.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list.unshift(action.payload);
+      })
+      .addCase(createTransaction.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // ✏️ Update Transaction
+    builder
+      .addCase(updateTransactionThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(updateTransactionThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.list.findIndex(t => t.id === action.payload.id);
+        if (index !== -1) {
+          state.list[index] = action.payload;
+        }
+      })
+      .addCase(updateTransactionThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // 🗑️ Delete Transaction
+    builder
+      .addCase(deleteTransactionThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(deleteTransactionThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list = state.list.filter(t => t.id !== action.payload);
+      })
+      .addCase(deleteTransactionThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+  },
 });
 
-export const { addTransaction, deleteTransaction } = transactionsSlice.actions;
+export const { addTransactionLocal, deleteTransactionLocal } = transactionsSlice.actions;
 export default transactionsSlice.reducer;

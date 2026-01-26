@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAppSelector } from '../store/hooks';
+import AccountModalStyled from '../components/AccountModalStyled';
 
 export default function AccountsScreen() {
   const theme = useAppSelector((state) => state.theme.mode);
   const isDark = theme === 'dark';
+  const [modalVisible, setModalVisible] = useState(false);
 
   const accounts = [
     { id: '1', name: 'Cash', balance: 1250.50, icon: '💵', color: '#10B981' },
@@ -76,6 +78,7 @@ export default function AccountsScreen() {
         <TouchableOpacity
           style={[styles.addButton, isDark ? styles.addButtonDark : styles.addButtonLight]}
           activeOpacity={0.8}
+          onPress={() => setModalVisible(true)}
         >
           <Text style={styles.addIcon}>+</Text>
           <Text style={[styles.addText, isDark ? styles.textWhite : styles.textDark]}>
@@ -83,6 +86,9 @@ export default function AccountsScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Account Modal */}
+      <AccountModalStyled visible={modalVisible} onClose={() => setModalVisible(false)} />
     </View>
   );
 }

@@ -11,12 +11,16 @@ export interface Category {
 }
 
 export interface Transaction {
-  id: string;
-  categoryId: string;
+  id: number;
+  account_id: number;
+  user_id: string;
+  category_id: number;
   amount: number;
+  transaction_type: 'expense' | 'income';
   description: string;
   date: string;
-  type: 'expense' | 'income';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface User {
@@ -47,4 +51,26 @@ export interface CategoriesState {
 
 export interface TransactionsState {
   list: Transaction[];
+  loading: boolean;
+  error: string | null;
+}
+
+export interface Account {
+  id: number;
+  user_id: string;
+  name: string;
+  type: string;
+  isActivated: boolean;
+  balance: number;
+  currency: string;
+  account_type: string;
+  bank_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountsState {
+  list: Account[];
+  loading: boolean;
+  error: string | null;
 }

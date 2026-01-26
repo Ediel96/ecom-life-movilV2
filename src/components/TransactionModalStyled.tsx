@@ -9,48 +9,79 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { addTransaction } from '../store/slices/transactionsSlice';
+import { addTransactionLocal } from '../store/slices/transactionsSlice';
 
 interface TransactionModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
+const ACCOUNT_TYPES = [
+  { id: 'cash', icon: '💵', label: 'Cash' },
+  { id: 'bank', icon: '🏦', label: 'Bank' },
+  { id: 'debit', icon: '💳', label: 'Debit' },
+  { id: 'saving', icon: '🐷', label: 'Saving' },
+];
+
 export default function TransactionModal({ visible, onClose }: TransactionModalProps) {
   const theme = useAppSelector((state) => state.theme.mode);
   const categories = useAppSelector((state) => state.categories.list);
+  const accounts = useAppSelector((state) => state.accounts.list);
   const dispatch = useAppDispatch();
 
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [account, setAccount] = useState('Cash');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
 
   const isDark = theme === 'dark';
 
+  // Filter categories by transaction type
+  const filteredCategories = categories.filter(
+    (category) => category.transaction_type === transactionType
+  );
+
+  // Set default account to 'cash' when accounts load
+  React.useEffect(() => {
+    if (accounts.length > 0 && selectedAccountId === null) {
+      const cashAccount = accounts.find(acc => acc.type === 'cash');
+      if (cashAccount) {
+        setSelectedAccountId(cashAccount.id);
+      } else {
+        setSelectedAccountId(accounts[0].id);
+      }
+    }
+  }, [accounts, selectedAccountId]);
+
   const handleSave = () => {
-    if (!description || !amount || !selectedCategoryId) {
+    if (!description || !amount || !selectedCategoryId || !selectedAccountId) {
       alert('Please fill all required fields');
       return;
     }
 
+    const now = new Date().toISOString();
+
     dispatch(
-      addTransaction({
-        id: Date.now().toString(),
+      addTransactionLocal({
+        id: Date.now(),
         description,
         amount: parseFloat(amount),
-        categoryId: selectedCategoryId,
-        date,
-        type: transactionType,
+        category_id: selectedCategoryId,
+        account_id: selectedAccountId,
+        user_id: '',
+        date: now,
+        transaction_type: transactionType,
+        created_at: now,
+        updated_at: now,
       })
     );
 
     // Reset form
     setDescription('');
     setAmount('');
-    setSelectedCategoryId('');
+    setSelectedCategoryId(null);
+    setSelectedAccountId(null);
     onClose();
   };
 
@@ -149,7 +180,7 @@ export default function TransactionModal({ visible, onClose }: TransactionModalP
                 Category
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-                {categories.map((category) => (
+                {filteredCategories.map((category) => (
                   <TouchableOpacity
                     key={category.id}
                     onPress={() => setSelectedCategoryId(category.id)}
@@ -159,7 +190,7 @@ export default function TransactionModal({ visible, onClose }: TransactionModalP
                       isDark ? styles.categoryItemDark : styles.categoryItemLight
                     ]}
                   >
-                    <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
+                    <View style={[styles.categoryIcon, { backgroundColor: category.color_fill }]}>
                       <Text style={styles.categoryEmoji}>{category.icon}</Text>
                     </View>
                     <Text style={[styles.categoryName, isDark ? styles.textWhite : styles.textDark]}>
@@ -170,32 +201,34 @@ export default function TransactionModal({ visible, onClose }: TransactionModalP
               </ScrollView>
             </View>
 
-            {/* Account Input */}
+            {/* Account Selection */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
                 Account
               </Text>
-              <TextInput
-                value={account}
-                onChangeText={setAccount}
-                placeholder="Select account"
-                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                style={[styles.input, isDark ? styles.inputDark : styles.inputLight, isDark ? styles.textWhite : styles.textDark]}
-              />
-            </View>
-
-            {/* Date Input */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
-                Date
-              </Text>
-              <TextInput
-                value={date}
-                onChangeText={setDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                style={[styles.input, isDark ? styles.inputDark : styles.inputLight, isDark ? styles.textWhite : styles.textDark]}
-              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountScroll}>
+                {accounts.map((account) => {
+                  const accountType = ACCOUNT_TYPES.find(t => t.id === account.type);
+                  return (
+                    <TouchableOpacity
+                      key={account.id}
+                      onPress={() => setSelectedAccountId(account.id)}
+                      style={[
+                        styles.accountItem,
+                        selectedAccountId === account.id && styles.accountItemSelected,
+                        isDark ? styles.accountItemDark : styles.accountItemLight
+                      ]}
+                    >
+                      <Text style={styles.accountIcon}>
+                        {accountType?.icon || '💰'}
+                      </Text>
+                      <Text style={[styles.accountName, isDark ? styles.textWhite : styles.textDark]}>
+                        {account.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
           </ScrollView>
 
@@ -356,6 +389,33 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   categoryName: {
+    fontSize: 12,
+  },
+  accountScroll: {
+    flexDirection: 'row',
+  },
+  accountItem: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  accountItemDark: {
+    backgroundColor: '#374151',
+  },
+  accountItemLight: {
+    backgroundColor: '#F9FAFB',
+  },
+  accountItemSelected: {
+    borderWidth: 2,
+    borderColor: '#10B981',
+  },
+  accountIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  accountName: {
     fontSize: 12,
   },
   footer: {
