@@ -28,7 +28,7 @@ export default function LoginScreen() {
     >
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
-        style={styles.bgDark}
+        style={isDark ? styles.bgDark : styles.bgLight}
       >
         <View style={styles.content}>
           {/* Logo/Title */}
@@ -42,37 +42,37 @@ export default function LoginScreen() {
           </View>
 
           {/* Auth Card */}
-          <View style={[styles.card, styles.shadow]}>
-            <Text style={styles.cardTitle}>
+          <View style={[styles.card, styles.shadow, !isDark && styles.cardLight]}>
+            <Text style={[styles.cardTitle, !isDark && styles.cardTitleLight]}>
               {isLogin ? 'Sign in' : 'Create account'}
             </Text>
-            <Text style={styles.cardSubtitle}>
+            <Text style={[styles.cardSubtitle, !isDark && styles.cardSubtitleLight]}>
               {isLogin ? 'Enter your email below to sign in' : 'Enter your details to create an account'}
             </Text>
 
             {/* OAuth Buttons */}
             <View style={styles.oauthContainer}>
-              <TouchableOpacity style={styles.oauthButton}>
+              <TouchableOpacity style={[styles.oauthButton, !isDark && styles.oauthButtonLight]}>
                 <Text style={styles.emoji}>👤</Text>
-                <Text style={styles.oauthButtonText}>Facebook</Text>
+                <Text style={[styles.oauthButtonText, !isDark && styles.oauthButtonTextLight]}>Facebook</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={styles.oauthButton}>
+              <TouchableOpacity style={[styles.oauthButton, !isDark && styles.oauthButtonLight]}>
                 <Text style={styles.emoji}>🔍</Text>
-                <Text style={styles.oauthButtonText}>Google</Text>
+                <Text style={[styles.oauthButtonText, !isDark && styles.oauthButtonTextLight]}>Google</Text>
               </TouchableOpacity>
             </View>
 
             {/* Divider */}
             <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, !isDark && styles.dividerLineLight]} />
+              <Text style={[styles.dividerText, !isDark && styles.dividerTextLight]}>OR CONTINUE WITH</Text>
+              <View style={[styles.dividerLine, !isDark && styles.dividerLineLight]} />
             </View>
 
             {/* Email Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={[styles.label, !isDark && styles.labelLight]}>Email</Text>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
@@ -80,20 +80,20 @@ export default function LoginScreen() {
                 placeholderTextColor="#6B7280"
                 keyboardType="email-address"
                 autoCapitalize="none"
-                style={styles.input}
+                style={[styles.input, !isDark && styles.inputLight]}
               />
             </View>
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={[styles.label, !isDark && styles.labelLight]}>Password</Text>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 placeholder="••••••••"
                 placeholderTextColor="#6B7280"
                 secureTextEntry
-                style={styles.input}
+                style={[styles.input, !isDark && styles.inputLight]}
               />
             </View>
 
@@ -121,7 +121,7 @@ export default function LoginScreen() {
           </View>
 
           {/* Footer */}
-          <Text style={styles.footer}>
+          <Text style={[styles.footer, !isDark && styles.footerLight]}>
             By continuing, you agree to our Terms & Privacy Policy
           </Text>
         </View>
@@ -267,5 +267,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 32,
     textAlign: 'center',
+  },
+  /* Light theme overrides */
+  bgLight: {
+    backgroundColor: '#F9FAFB',
+  },
+  cardLight: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
+  },
+  cardTitleLight: {
+    color: '#111827',
+  },
+  cardSubtitleLight: {
+    color: '#6B7280',
+  },
+  oauthButtonLight: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  oauthButtonTextLight: {
+    color: '#111827',
+  },
+  dividerLineLight: {
+    backgroundColor: '#E5E7EB',
+  },
+  dividerTextLight: {
+    color: '#6B7280',
+  },
+  labelLight: {
+    color: '#111827',
+  },
+  inputLight: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D1D5DB',
+    color: '#111827',
+  },
+  taglineLight: {
+    color: '#6B7280',
+  },
+  footerLight: {
+    color: '#6B7280',
   },
 });

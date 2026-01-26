@@ -177,7 +177,7 @@ export default function DashboardScreen() {
                   </View>
                 </View>
                 <Text style={styles.amountText}>
-                  - ${transaction.amount.toFixed(2)}
+                  - ${(transaction.amount || 0).toFixed(2)}
                 </Text>
               </View>
             ))}

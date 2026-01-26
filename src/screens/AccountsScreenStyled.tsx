@@ -29,7 +29,7 @@ export default function AccountsScreen() {
             Total Balance
           </Text>
           <Text style={[styles.totalAmount, isDark ? styles.textWhite : styles.textDark]}>
-            ${totalBalance.toFixed(2)}
+            ${(totalBalance || 0).toFixed(2)}
           </Text>
           <Text style={[styles.totalSubtext, isDark ? styles.textGray : styles.textGrayDark]}>
             Across all accounts
@@ -66,7 +66,7 @@ export default function AccountsScreen() {
                   account.balance < 0 ? styles.balanceNegative : (isDark ? styles.textWhite : styles.textDark)
                 ]}
               >
-                ${Math.abs(account.balance).toFixed(2)}
+                ${Math.abs(account.balance || 0).toFixed(2)}
               </Text>
             </TouchableOpacity>
           ))}

@@ -1,18 +1,65 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { useAppSelector } from '../store/hooks';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { fetchCategories, deleteCategoryThunk } from '../store/slices/categoriesSlice';
 
 export default function CategoriesScreen() {
+  const dispatch = useAppDispatch();
   const theme = useAppSelector((state) => state.theme.mode);
-  const categories = useAppSelector((state) => state.categories.list);
-  const [selectedTab, setSelectedTab] = useState<'all' | 'expenses' | 'income'>('all');
+  const { list: categories, loading, error } = useAppSelector((state) => state.categories);
+  const [selectedTab, setSelectedTab] = useState<'all' | 'expense' | 'income'>('all');
 
   const isDark = theme === 'dark';
 
-  // Filter categories (currently all categories are expenses type for demo)
+  // Load categories on mount
+  useEffect(() => {
+    dispatch(fetchCategories());
+  }, [dispatch]);
+
+  // Filter categories by transaction_type
   const filteredCategories = selectedTab === 'all' 
     ? categories 
-    : categories.filter(c => c.type === selectedTab);
+    : categories.filter(c => c.transaction_type === selectedTab);
+
+  const handleDeleteCategory = (id: number, name: string) => {
+    Alert.alert(
+      'Eliminar Categoría',
+      `¿Estás seguro de eliminar "${name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => dispatch(deleteCategoryThunk(id))
+        }
+      ]
+    );
+  };
+
+  if (loading && categories.length === 0) {
+    return (
+      <View style={[styles.container, styles.centerContent, isDark ? styles.bgDark : styles.bgLight]}>
+        <ActivityIndicator size="large" color="#10B981" />
+        <Text style={[styles.loadingText, isDark ? styles.textGray : styles.textGrayDark]}>
+          Cargando categorías...
+        </Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centerContent, isDark ? styles.bgDark : styles.bgLight]}>
+        <Text style={[styles.errorText]}>❌ {error}</Text>
+        <TouchableOpacity 
+          onPress={() => dispatch(fetchCategories())}
+          style={styles.retryButton}
+        >
+          <Text style={styles.retryText}>🔄 Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, isDark ? styles.bgDark : styles.bgLight]}>
@@ -29,14 +76,14 @@ export default function CategoriesScreen() {
             style={[styles.tab, selectedTab === 'all' && styles.tabActive]}
           >
             <Text style={[styles.tabText, selectedTab === 'all' ? styles.tabTextActive : (isDark ? styles.textGray : styles.textGrayDark)]}>
-              All
+              All ({categories.length})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setSelectedTab('expenses')}
-            style={[styles.tab, selectedTab === 'expenses' && styles.tabActive]}
+            onPress={() => setSelectedTab('expense')}
+            style={[styles.tab, selectedTab === 'expense' && styles.tabActive]}
           >
-            <Text style={[styles.tabText, selectedTab === 'expenses' ? styles.tabTextActive : (isDark ? styles.textGray : styles.textGrayDark)]}>
+            <Text style={[styles.tabText, selectedTab === 'expense' ? styles.tabTextActive : (isDark ? styles.textGray : styles.textGrayDark)]}>
               Expenses
             </Text>
           </TouchableOpacity>
@@ -57,16 +104,10 @@ export default function CategoriesScreen() {
               key={category.id}
               style={[styles.categoryCard, isDark ? styles.cardDark : styles.cardLight]}
               activeOpacity={0.7}
+              onLongPress={() => handleDeleteCategory(category.id, category.name)}
             >
-              {/* Badge */}
-              {category.id === '1' && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>8</Text>
-                </View>
-              )}
-
               {/* Icon Circle */}
-              <View style={[styles.iconCircle, { backgroundColor: category.color }]}>
+              <View style={[styles.iconCircle, { backgroundColor: category.color_fill }]}>
                 <Text style={styles.iconText}>{category.icon}</Text>
               </View>
 
@@ -75,10 +116,15 @@ export default function CategoriesScreen() {
                 {category.name}
               </Text>
 
-              {/* Budget */}
-              <Text style={[styles.budgetText, isDark ? styles.textGray : styles.textGrayDark]}>
-                ${category.budget.toFixed(2)}
-              </Text>
+              {/* Type Badge */}
+              <View style={[
+                styles.typeBadge,
+                category.transaction_type === 'expense' ? styles.expenseBadge : styles.incomeBadge
+              ]}>
+                <Text style={styles.typeBadgeText}>
+                  {category.transaction_type === 'expense' ? '📤' : '📥'}
+                </Text>
+              </View>
             </TouchableOpacity>
           ))}
 
@@ -174,21 +220,22 @@ const styles = StyleSheet.create({
   cardLight: {
     backgroundColor: '#FFFFFF',
   },
-  badge: {
+  typeBadge: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: '#EF4444',
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    minWidth: 24,
-    alignItems: 'center',
   },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
+  expenseBadge: {
+    backgroundColor: '#FEE2E2',
+  },
+  incomeBadge: {
+    backgroundColor: '#D1FAE5',
+  },
+  typeBadgeText: {
+    fontSize: 14,
   },
   iconCircle: {
     width: 56,
@@ -206,22 +253,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
-  budgetText: {
-    fontSize: 14,
-  },
   addCard: {
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#10B981',
   },
   addIconCircle: {
-    backgroundColor: '#374151',
-    borderWidth: 2,
-    borderColor: '#4B5563',
-    borderStyle: 'dashed',
+    backgroundColor: '#10B981',
   },
   addIcon: {
     fontSize: 32,
-    color: '#9CA3AF',
+    color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

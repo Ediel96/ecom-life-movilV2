@@ -6,6 +6,7 @@ import { useAppSelector } from '../store/hooks';
 import DashboardScreen from '../screens/DashboardScreenStyled';
 import CategoriesScreen from '../screens/CategoriesScreenStyled';
 import AccountsScreen from '../screens/AccountsScreenStyled';
+import GoalsScreen from '../screens/GoalsScreen';
 import SettingsScreen from '../screens/SettingsScreenStyled';
 import LoginScreen from '../screens/LoginScreenStyled';
 
@@ -13,6 +14,7 @@ export type RootTabParamList = {
   Dashboard: undefined;
   Categories: undefined;
   Accounts: undefined;
+  Goals: undefined;
   Settings: undefined;
 };
 
@@ -79,6 +81,14 @@ export default function AppNavigator() {
           options={{ 
             tabBarLabel: 'Accounts',
             tabBarIcon: ({ color }) => <RNText style={{ fontSize: 24 }}>💳</RNText>
+          }}
+        />
+        <Tab.Screen 
+          name="Goals" 
+          component={GoalsScreen}
+          options={{ 
+            tabBarLabel: 'Goals',
+            tabBarIcon: ({ color }) => <RNText style={{ fontSize: 24 }}>🎯</RNText>
           }}
         />
         <Tab.Screen 

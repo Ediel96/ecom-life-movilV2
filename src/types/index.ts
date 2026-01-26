@@ -1,9 +1,13 @@
 export interface Category {
-  id: string;
+  id: number;
+  key: string;
   name: string;
   icon: string;
-  color: string;
-  budget: number;
+  color_fill: string;
+  color_bg: string;
+  transaction_type: 'expense' | 'income';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Transaction {
@@ -37,6 +41,8 @@ export interface CounterState {
 
 export interface CategoriesState {
   list: Category[];
+  loading: boolean;
+  error: string | null;
 }
 
 export interface TransactionsState {

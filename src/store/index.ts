@@ -7,12 +7,13 @@ import themeReducer from './slices/themeSlice';
 import authReducer from './slices/authSlice';
 import categoriesReducer from './slices/categoriesSlice';
 import transactionsReducer from './slices/transactionsSlice';
+import goalsReducer from './slices/goalsSlice';
 import { apiSlice } from '../api/apiSlice';
 
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['counter', 'theme', 'auth', 'categories', 'transactions'],
+  whitelist: ['counter', 'theme', 'auth', 'categories', 'transactions', 'goals'],
 };
 
 const rootReducer = combineReducers({
@@ -21,6 +22,7 @@ const rootReducer = combineReducers({
   auth: authReducer,
   categories: categoriesReducer,
   transactions: transactionsReducer,
+  goals: goalsReducer,
   [apiSlice.reducerPath]: apiSlice.reducer,
 });
 
