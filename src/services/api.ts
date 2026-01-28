@@ -1,11 +1,14 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import * as auth from './auth';
+import { getAuthHeaders } from './authHelpers';
 
 // URLs base para diferentes servicios
 const API_URLS = {
   AUTH: 'http://localhost:8082',     // Servicio de autenticación y tokens
   MAIN: 'http://localhost:8080',     // Servicios principales (expenses, accounts, etc.)
 };
+
+// Obtener token de forma inicial (si es necesario)
 
 // Configuración común para ambas instancias
 const defaultConfig: AxiosRequestConfig = {
@@ -34,8 +37,18 @@ mainApi.interceptors.request.use((cfg) => debugInterceptor(cfg));
 // Interceptor para adjuntar token (solo para servicios principales)
 const tokenInterceptor = async (config: InternalAxiosRequestConfig) => {
   const token = await auth.getToken();
+  console.log('🔑 Token retrieved:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    const authHeader = `Bearer ${token}`;
+    const headersAny = config.headers as any;
+    if (headersAny?.set && typeof headersAny.set === 'function') {
+      headersAny.set('Authorization', authHeader);
+    } else {
+      config.headers = { ...(headersAny || {}), Authorization: authHeader } as any;
+    }
+    console.log('📤 Request to:', config.url, 'with Authorization header');
+  } else {
+    console.log('⚠️ No token found, request to:', config.url);
   }
   return config;
 };
@@ -69,9 +82,51 @@ const api = {
   
   // Servicios principales (puerto 8080)
   transactions: {
-    getAll: (queryParams = '') => {
-      const url = queryParams ? `/api/transactions?${queryParams}` : '/api/transactions';
-      return mainApi.get(url);
+    
+    // Opcional: pasar filtros como objeto y/o headers (token ya lo añade el interceptor)
+    getAll: (options?: {
+      page?: number;
+      size?: number;
+      sort?: string;
+      user_id?: string;
+      account_id?: string | number;
+      category_id?: string | number;
+      transaction_type?: string;
+      date_from?: string;
+      date_to?: string;
+      params?: Record<string, any>;
+      headers?: AxiosRequestConfig['headers'],
+      [key: string]: any;
+    }) => {
+      const {
+        headers,
+        params: extraParams,
+        page,
+        size,
+        sort,
+        user_id,
+        account_id,
+        category_id,
+        transaction_type,
+        date_from,
+        date_to,
+        ...rest
+      } = options || {};
+
+      const params: Record<string, any> = { ...(extraParams || {}) };
+      if (page !== undefined) params.page = page;
+      if (size !== undefined) params.size = size;
+      if (sort !== undefined) params.sort = sort;
+      if (user_id !== undefined) params.user_id = user_id;
+      if (account_id !== undefined) params.account_id = account_id;
+      if (category_id !== undefined) params.category_id = category_id;
+      if (transaction_type !== undefined) params.transaction_type = transaction_type;
+      if (date_from !== undefined) params.date_from = date_from;
+      if (date_to !== undefined) params.date_to = date_to;
+      // merge any other custom filters
+      Object.assign(params, rest);
+
+      return mainApi.get('/api/transactions', { params, headers });
     },
     create: (transaction: any) => mainApi.post('/api/transactions', transaction),
     update: (id: string | number, transaction: any) => mainApi.put(`/api/transactions/${id}`, transaction),
@@ -132,7 +187,7 @@ const api = {
 };
 
 // Exportar instancias individuales para casos especiales
-export { authApi, mainApi };
+export { authApi, mainApi, getAuthHeaders };
 
 // Exportar API organizada por defecto
 export default api;

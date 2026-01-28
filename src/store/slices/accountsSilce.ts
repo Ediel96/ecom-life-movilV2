@@ -67,7 +67,6 @@ export const fetchAccounts = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.accounts.getAll();
-      console.log('Fetched accounts:', response.data);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data || 'Error al cargar cuentas');

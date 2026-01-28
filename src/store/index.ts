@@ -15,12 +15,20 @@ const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
   whitelist: ['counter', 'theme', 'auth', 'categories', 'transactions', 'goals', 'accounts'],
+  blacklist: [],
+};
+
+// Configuración específica para auth - excluir token porque se guarda en SecureStore
+const authPersistConfig = {
+  key: 'auth',
+  storage: AsyncStorage,
+  blacklist: ['token'], // No persistir el token aquí, se guarda en SecureStore
 };
 
 const rootReducer = combineReducers({
   counter: counterReducer,
   theme: themeReducer,
-  auth: authReducer,
+  auth: persistReducer(authPersistConfig, authReducer),
   categories: categoriesReducer,
   transactions: transactionsReducer,
   goals: goalsReducer,
@@ -41,6 +49,5 @@ export const store = configureStore({
 });
 
 export const persistor = persistStore(store);
-
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { useAppSelector } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { PieChart } from 'react-native-gifted-charts';
 import TransactionModal from '../components/TransactionModalStyled';
 import { Category } from '../types';
+import { fetchTransactions } from '../store/slices/transactionsSlice';
 
 interface CategoryWithTotal extends Category {
   total: number;
@@ -11,15 +12,29 @@ interface CategoryWithTotal extends Category {
 
 export default function DashboardScreen() {
   const theme = useAppSelector((state) => state.theme.mode);
-  const categories = useAppSelector((state) => state.categories.list);
-  const transactions = useAppSelector((state) => state.transactions.list);
+  const categories = useAppSelector((state) => state.categories?.list ?? []);
+  const transactionsRaw = useAppSelector((state) => state.transactions?.list);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'expenses' | 'income'>('expenses');
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'year'>('day');
 
   const isDark = theme === 'dark';
 
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    dispatch(fetchTransactions());
+  }, [dispatch]);
+
+  // Ensure transactions is always an array - extra defensive
+  const transactions = React.useMemo(() => {
+    if (!transactionsRaw) return [];
+    if (!Array.isArray(transactionsRaw)) return [];
+    return transactionsRaw;
+  }, [transactionsRaw]);
+
   // Calculate totals per category
+  console.log('Transactions:', transactions, 'Type:', typeof transactions, 'IsArray:', Array.isArray(transactions));
   const categoryTotals: CategoryWithTotal[] = categories.map(cat => {
     const total = transactions
       .filter(t => t.category_id === cat.id)

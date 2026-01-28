@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { login } from '../store/slices/authSlice';
+import { loginThunk } from '../store/slices/authSlice';
 
 export default function LoginScreen() {
   const dispatch = useAppDispatch();
   const theme = useAppSelector((state) => state.theme.mode);
+  const authLoading = useAppSelector((state) => state.auth.loading);
+  const authError = useAppSelector((state) => state.auth.error);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
 
   const isDark = theme === 'dark';
 
-  const handleAuth = () => {
+  const handleAuth = async () => {
     if (email && password) {
-      dispatch(login({ 
-        user: { email, name: email.split('@')[0] },
-        token: 'demo-token'
-      }));
+      try {
+        await dispatch(loginThunk({ email, password })).unwrap();
+      } catch (error) {
+        console.error('Login error:', error);
+      }
     }
   };
 
@@ -97,14 +100,22 @@ export default function LoginScreen() {
               />
             </View>
 
+            {/* Error Message */}
+            {authError && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>⚠️ {authError}</Text>
+              </View>
+            )}
+
             {/* Login Button */}
             <TouchableOpacity
               onPress={handleAuth}
               style={[styles.button, styles.primaryButton]}
               activeOpacity={0.8}
+              disabled={authLoading}
             >
               <Text style={styles.primaryButtonText}>
-                {isLogin ? 'Login' : 'Sign Up'}
+                {authLoading ? 'Loading...' : (isLogin ? 'Login' : 'Sign Up')}
               </Text>
             </TouchableOpacity>
 
@@ -245,6 +256,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     color: 'white',
     fontSize: 16,
+  },
+  errorContainer: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: '#991B1B',
+    fontSize: 14,
   },
   button: {
     borderRadius: 12,

@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import api from './api';
 
-const TOKEN_KEY = 'auth_token';
+const TOKEN_KEY = 'token';
 
 export interface LoginPayload {
   email?: string;
@@ -20,26 +20,32 @@ export interface AuthResult {
 
 export const saveToken = async (token: string): Promise<void> => {
   try {
-    await AsyncStorage.setItem(TOKEN_KEY, token);
+    console.log('💾 Saving token to SecureStore:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    console.log('✅ Token saved successfully');
   } catch (error) {
-    console.error('Failed to save token:', error);
+    console.error('❌ Failed to save token:', error);
   }
 };
 
 export const getToken = async (): Promise<string | null> => {
   try {
-    return await AsyncStorage.getItem(TOKEN_KEY);
+    const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    console.log('🔑 Retrieved token from SecureStore:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN FOUND');
+    return token;
   } catch (error) {
-    console.error('Failed to read token:', error);
+    console.error('❌ Failed to read token:', error);
     return null;
   }
 };
 
 export const removeToken = async (): Promise<void> => {
   try {
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    console.log('🗑️ Removing token from SecureStore');
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    console.log('✅ Token removed successfully');
   } catch (error) {
-    console.error('Failed to remove token:', error);
+    console.error('❌ Failed to remove token:', error);
   }
 };
 

@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { TransactionsState, Transaction } from '../../types';
 import api from '../../services/api';
+import { getAuthHeaders } from '../../services/authHelpers';
 
 const initialState: TransactionsState = {
   list: [],
@@ -12,11 +13,17 @@ export const fetchTransactions = createAsyncThunk(
   'transactions/fetchTransactions',
   async (_, thunkAPI) => {
     try {
-      // Replace with your API call
-      const response = await api.transactions.getAll();
+      // Call the API without manually passing headers; mainApi interceptor adds the token
+      console.log('🚀 Fetching transactions from API');
+      const headers = await getAuthHeaders();
+      console.log('🔍 Using headers:', headers);
+      const response = await api.transactions.getAll(headers);
       const data = response.data;
+      console.log('✅ Fetched transactions:', data);
+      console.log('✅ Transaction count:', data?.length || 0);
       return data as Transaction[];
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ Error fetching transactions:', error?.response?.data || error?.message || error);
       return thunkAPI.rejectWithValue('Failed to fetch transactions');
     }
   }

@@ -27,12 +27,14 @@ const ACCOUNT_TYPES = [
 
 export default function AccountModal({ visible, onClose }: AccountModalProps) {
   const theme = useAppSelector((state) => state.theme.mode);
+  const accounts = useAppSelector((state) => state.accounts.list);
   const dispatch = useAppDispatch();
   const isDark = theme === 'dark';
 
   const [accountName, setAccountName] = useState('');
   const [balance, setBalance] = useState('');
   const [selectedType, setSelectedType] = useState<string>('bank');
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [isActivated, setIsActivated] = useState(true);
 
   const handleCreate = () => {
@@ -132,38 +134,34 @@ export default function AccountModal({ visible, onClose }: AccountModalProps) {
               />
             </View>
 
-            {/* Account Type */}
+            {/* Account Selection */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
-                Account Type
+                Select Account
               </Text>
-              <View style={styles.typeContainer}>
-                {ACCOUNT_TYPES.map((type) => (
-                  <TouchableOpacity
-                    key={type.id}
-                    onPress={() => setSelectedType(type.id)}
-                    style={[
-                      styles.typeButton,
-                      selectedType === type.id
-                        ? [styles.typeButtonActive, isDark ? styles.typeButtonActiveDark : styles.typeButtonActiveLight]
-                        : [styles.typeButtonInactive, isDark ? styles.typeButtonInactiveDark : styles.typeButtonInactiveLight],
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.typeIcon}>{type.icon}</Text>
-                    <Text
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountScroll}>
+                {accounts.map((account) => {
+                  const accountType = ACCOUNT_TYPES.find(t => t.id === account.type);
+                  return (
+                    <TouchableOpacity
+                      key={account.id}
+                      onPress={() => setSelectedAccountId(account.id)}
                       style={[
-                        styles.typeLabel,
-                        selectedType === type.id
-                          ? styles.typeLabelActive
-                          : isDark ? styles.typeLabelInactiveDark : styles.typeLabelInactiveLight,
+                        styles.accountItem,
+                        selectedAccountId === account.id && styles.accountItemSelected,
+                        isDark ? styles.accountItemDark : styles.accountItemLight
                       ]}
                     >
-                      {type.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                      <Text style={styles.accountIcon}>
+                        {accountType?.icon || '💰'}
+                      </Text>
+                      <Text style={[styles.accountName, isDark ? styles.textWhite : styles.textDark]}>
+                        {account.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
 
             {/* Active Toggle */}
@@ -294,59 +292,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderColor: '#D1D5DB',
   },
-  typeContainer: {
+  accountScroll: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
   },
-  typeButton: {
-    flex: 1,
-    minWidth: '22%',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+  accountItem: {
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginRight: 12,
   },
-  typeButtonActive: {
+  accountItemDark: {
+    backgroundColor: '#0F172A',
+  },
+  accountItemLight: {
+    backgroundColor: '#F9FAFB',
+  },
+  accountItemSelected: {
+    borderWidth: 2,
     borderColor: '#10B981',
   },
-  typeButtonActiveDark: {
-    backgroundColor: '#10B981',
-    opacity: 0.2,
+  accountIcon: {
+    fontSize: 24,
+    marginBottom: 4,
   },
-  typeButtonActiveLight: {
-    backgroundColor: '#10B981',
-    opacity: 0.1,
-  },
-  typeButtonInactive: {
-    borderColor: '#D1D5DB',
-  },
-  typeButtonInactiveDark: {
-    backgroundColor: '#0F172A',
-    borderColor: '#334155',
-  },
-  typeButtonInactiveLight: {
-    backgroundColor: '#F9FAFB',
-    borderColor: '#E5E7EB',
-  },
-  typeIcon: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
-  typeLabel: {
+  accountName: {
     fontSize: 12,
-    fontWeight: '600',
-  },
-  typeLabelActive: {
-    color: '#10B981',
-  },
-  typeLabelInactiveDark: {
-    color: '#9CA3AF',
-  },
-  typeLabelInactiveLight: {
-    color: '#6B7280',
   },
   toggleGroup: {
     marginBottom: 20,
