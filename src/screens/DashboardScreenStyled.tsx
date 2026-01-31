@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { format, parseISO } from 'date-fns';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { PieChart } from 'react-native-gifted-charts';
@@ -174,7 +175,7 @@ export default function DashboardScreen() {
                 style={[styles.transactionCard, isDark ? styles.cardDark : styles.cardLight]}
               >
                 <View style={styles.transactionContent}>
-                  <View style={styles.iconContainer}>
+                  <View style={[styles.iconContainer, { backgroundColor: transaction.category?.color_fill || '#10B981' }]}>
                     <Text style={styles.iconText}>{transaction.category?.icon || '💰'}</Text>
                   </View>
                   <View style={styles.transactionInfo}>
@@ -183,7 +184,7 @@ export default function DashboardScreen() {
                     </Text>
                     <View style={styles.transactionMeta}>
                       <Text style={[styles.metaText, isDark ? styles.textGray : styles.textGrayDark]}>
-                        📅 {transaction.date}
+                        📅 {transaction.date ? format(parseISO(transaction.date), 'dd MMM yyyy, HH:mm') : ''}
                       </Text>
                       <Text style={[styles.metaText, isDark ? styles.textGray : styles.textGrayDark]}>
                         💪 {transaction.description || transaction.category?.name}
@@ -399,9 +400,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   transactionMeta: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
+    flexDirection: 'column',
+    gap: 4,
+    marginTop: 8,
   },
   metaText: {
     fontSize: 14,
