@@ -2,6 +2,17 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { TransactionsState, Transaction } from '../../types';
 import api from '../../services/api';
 import { getAuthHeaders } from '../../services/authHelpers';
+import { jwtDecode } from 'jwt-decode';
+import * as SecureStore from 'expo-secure-store';
+
+interface JwtPayload {
+  role: string;
+  name: string;
+  userId: string;
+  sub: string;
+  iat: number;
+  exp: number;
+}
 
 const initialState: TransactionsState = {
   list: [],
@@ -13,12 +24,29 @@ export const fetchTransactions = createAsyncThunk(
   'transactions/fetchTransactions',
   async (_, thunkAPI) => {
     try {
-      // Call the API without manually passing headers; mainApi interceptor adds the token
+      // Get token and decode to extract userId
       console.log('🚀 Fetching transactions from API');
+      const token = await SecureStore.getItemAsync('token');
+      
+      if (!token) {
+        console.error('❌ No token found');
+        return thunkAPI.rejectWithValue('No token found');
+      }
+
+      // Decode JWT to get userId
+      const decoded = jwtDecode<JwtPayload>(token);
+      const userId = decoded.userId;
+      console.log('👤 User ID from token:', userId);
+
       const headers = await getAuthHeaders();
       console.log('🔍 Using headers:', headers);
-      const response = await api.transactions.getAll(headers);
-      const data = response.data;
+      
+      // Call API with user_id parameter
+      const response = await api.transactions.getAll({ 
+        user_id: userId,
+        headers 
+      });
+      const data = response.data.content;
       console.log('✅ Fetched transactions:', data);
       console.log('✅ Transaction count:', data?.length || 0);
       return data as Transaction[];
