@@ -1,25 +1,94 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { useAppSelector } from '../store/hooks';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
 import AccountModalStyled from '../components/AccountModalStyled';
+import { fetchAccounts, deleteAccountThunk } from '../store/slices/accountsSilce';
+
+const ACCOUNT_TYPES = [
+  { id: 'cash', icon: '💵', label: 'Cash', color: '#10B981' },
+  { id: 'bank', icon: '🏦', label: 'Bank', color: '#3B82F6' },
+  { id: 'debit', icon: '💳', label: 'Debit', color: '#8B5CF6' },
+  { id: 'saving', icon: '🐷', label: 'Saving', color: '#F59E0B' },
+  { id: 'DEFAULT', icon: '💰', label: 'Default', color: '#6B7280' },
+];
 
 export default function AccountsScreen() {
   const theme = useAppSelector((state) => state.theme.mode);
+  const accounts = useAppSelector((state) => state.accounts.list);
+  const loading = useAppSelector((state) => state.accounts.loading);
+  const dispatch = useAppDispatch();
   const isDark = theme === 'dark';
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<any>(null);
 
-  const accounts = [
-    { id: '1', name: 'Cash', balance: 1250.50, icon: '💵', color: '#10B981' },
-    { id: '2', name: 'Bank Account', balance: 5430.25, icon: '🏦', color: '#3B82F6' },
-    { id: '3', name: 'Credit Card', balance: -320.75, icon: '💳', color: '#EF4444' },
-    { id: '4', name: 'Savings', balance: 12500.00, icon: '🐷', color: '#F59E0B' },
-  ];
+  // Fetch accounts on mount
+  useEffect(() => {
+    dispatch(fetchAccounts());
+  }, [dispatch]);
 
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
+  const handleAddAccount = () => {
+    setSelectedAccount(null);
+    setModalVisible(true);
+  };
+
+  const handleEditAccount = (account: any) => {
+    setSelectedAccount(account);
+    setModalVisible(true);
+  };
+
+  const handleDeleteAccount = (account: any) => {
+    Alert.alert(
+      'Delete Account',
+      `Are you sure you want to delete "${account.name}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(deleteAccountThunk(account.id));
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSelectedAccount(null);
+  };
+
+  const renderRightActions = (account: any) => (
+    <View style={styles.swipeActions}>
+      <TouchableOpacity
+        style={[styles.actionButton, styles.editButton]}
+        onPress={() => handleEditAccount(account)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.actionIcon}>✏️</Text>
+        <Text style={styles.actionText}>Edit</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.actionButton, styles.deleteButton]}
+        onPress={() => handleDeleteAccount(account)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.actionIcon}>🗑️</Text>
+        <Text style={styles.actionText}>Delete</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <View style={[styles.container, isDark ? styles.bgDark : styles.bgLight]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={[styles.container, isDark ? styles.bgDark : styles.bgLight]}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <Text style={[styles.header, isDark ? styles.textWhite : styles.textDark]}>
           Accounts
@@ -43,42 +112,65 @@ export default function AccountsScreen() {
           <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
             My Accounts
           </Text>
-          {accounts.map((account) => (
-            <TouchableOpacity
-              key={account.id}
-              style={[styles.accountCard, isDark ? styles.cardDark : styles.cardLight]}
-              activeOpacity={0.7}
-            >
-              <View style={styles.accountContent}>
-                <View style={[styles.iconCircle, { backgroundColor: account.color }]}>
-                  <Text style={styles.iconText}>{account.icon}</Text>
-                </View>
-                <View style={styles.accountInfo}>
-                  <Text style={[styles.accountName, isDark ? styles.textWhite : styles.textDark]}>
-                    {account.name}
-                  </Text>
-                  <Text style={[styles.accountType, isDark ? styles.textGray : styles.textGrayDark]}>
-                    {account.balance < 0 ? 'Credit' : 'Active'}
-                  </Text>
-                </View>
-              </View>
-              <Text
-                style={[
-                  styles.accountBalance,
-                  account.balance < 0 ? styles.balanceNegative : (isDark ? styles.textWhite : styles.textDark)
-                ]}
-              >
-                ${Math.abs(account.balance || 0).toFixed(2)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {loading ? (
+            <Text style={[styles.loadingText, isDark ? styles.textGray : styles.textGrayDark]}>
+              Loading accounts...
+            </Text>
+          ) : accounts.length === 0 ? (
+            <Text style={[styles.emptyText, isDark ? styles.textGray : styles.textGrayDark]}>
+              No accounts yet. Add your first account!
+            </Text>
+          ) : (
+            accounts.map((account) => {
+              // Find matching account type from ACCOUNT_TYPES
+              const accountTypeData = ACCOUNT_TYPES.find(t => 
+                t.id === account.type || t.id === account.account_type
+              ) || ACCOUNT_TYPES[ACCOUNT_TYPES.length - 1]; // Default to last item
+
+              return (
+                <Swipeable
+                  key={account.id}
+                  renderRightActions={() => renderRightActions(account)}
+                  overshootRight={false}
+                >
+                  <TouchableOpacity
+                    style={[styles.accountCard, isDark ? styles.cardDark : styles.cardLight]}
+                    activeOpacity={0.7}
+                    onPress={() => handleEditAccount(account)}
+                  >
+                    <View style={styles.accountContent}>
+                      <View style={[styles.iconCircle, { backgroundColor: accountTypeData.color }]}>
+                        <Text style={styles.iconText}>{accountTypeData.icon}</Text>
+                      </View>
+                      <View style={styles.accountInfo}>
+                        <Text style={[styles.accountName, isDark ? styles.textWhite : styles.textDark]}>
+                          {account.name}
+                        </Text>
+                        <Text style={[styles.accountType, isDark ? styles.textGray : styles.textGrayDark]}>
+                          {account.bank_name || accountTypeData.label} • {account.isActivated ? 'Active' : 'Inactive'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text
+                      style={[
+                        styles.accountBalance,
+                        account.balance < 0 ? styles.balanceNegative : (isDark ? styles.textWhite : styles.textDark)
+                      ]}
+                    >
+                      ${Math.abs(account.balance || 0).toFixed(2)}
+                    </Text>
+                  </TouchableOpacity>
+                </Swipeable>
+              );
+            })
+          )}
         </View>
 
         {/* Add Account Button */}
         <TouchableOpacity
           style={[styles.addButton, isDark ? styles.addButtonDark : styles.addButtonLight]}
           activeOpacity={0.8}
-          onPress={() => setModalVisible(true)}
+          onPress={handleAddAccount}
         >
           <Text style={styles.addIcon}>+</Text>
           <Text style={[styles.addText, isDark ? styles.textWhite : styles.textDark]}>
@@ -88,8 +180,13 @@ export default function AccountsScreen() {
       </ScrollView>
 
       {/* Account Modal */}
-      <AccountModalStyled visible={modalVisible} onClose={() => setModalVisible(false)} />
-    </View>
+      <AccountModalStyled 
+        visible={modalVisible} 
+        onClose={handleCloseModal}
+        account={selectedAccount}
+      />
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -230,6 +327,42 @@ const styles = StyleSheet.create({
   },
   addText: {
     fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingText: {
+    textAlign: 'center',
+    fontSize: 16,
+    paddingVertical: 24,
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 16,
+    paddingVertical: 24,
+  },
+  swipeActions: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  actionButton: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+  },
+  editButton: {
+    backgroundColor: '#3B82F6',
+    marginRight: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+  },
+  actionIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  actionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '600',
   },
 });

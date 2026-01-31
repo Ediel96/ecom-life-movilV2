@@ -1,6 +1,18 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AccountsState, Account } from '../../types';
 import api from '../../services/api';
+import { getAuthHeaders } from '../../services/authHelpers';
+import { jwtDecode } from 'jwt-decode';
+import * as SecureStore from 'expo-secure-store';
+
+interface JwtPayload {
+  role: string;
+  name: string;
+  userId: string;
+  sub: string;
+  iat: number;
+  exp: number;
+}
 
 const initialState: AccountsState = {
   list: [
@@ -64,12 +76,33 @@ const initialState: AccountsState = {
 // 🔥 Async Thunks para llamadas API
 export const fetchAccounts = createAsyncThunk(
   'accounts/fetchAccounts',
-  async (_, { rejectWithValue }) => {
+  async (_, thunkAPI) => {
     try {
+      console.log('🚀 Fetching accounts from API');
+      const token = await SecureStore.getItemAsync('token');
+      
+      if (!token) {
+        console.error('❌ No token found');
+        return thunkAPI.rejectWithValue('No token found');
+      }
+
+      // Decode JWT to get userId
+      const decoded = jwtDecode<JwtPayload>(token);
+      const userId = decoded.userId;
+      console.log('👤 User ID from token:', userId);
+
+      const headers = await getAuthHeaders();
+      console.log('🔍 Using headers:', headers);
+      
+      // Call API with user_id parameter
       const response = await api.accounts.getAll();
-      return response.data;
+      const data = response.data;
+      console.log('✅ Fetched accounts:', data);
+      console.log('✅ Account count:', data?.length || 0);
+      return data as Account[];
     } catch (error: any) {
-      return rejectWithValue(error.response?.data || 'Error al cargar cuentas');
+      console.error('❌ Error fetching accounts:', error?.response?.data || error?.message || error);
+      return thunkAPI.rejectWithValue('Failed to fetch accounts');
     }
   }
 );

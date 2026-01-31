@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { addTransactionLocal } from '../store/slices/transactionsSlice';
+import { fetchAccounts } from '../store/slices/accountsSilce';
 
 interface TransactionModalProps {
   visible: boolean;
@@ -37,13 +38,20 @@ export default function TransactionModal({ visible, onClose }: TransactionModalP
 
   const isDark = theme === 'dark';
 
+  // Fetch accounts when modal opens
+  useEffect(() => {
+    if (visible) {
+      dispatch(fetchAccounts());
+    }
+  }, [visible, dispatch]);
+
   // Filter categories by transaction type
   const filteredCategories = categories.filter(
     (category) => category.transaction_type === transactionType
   );
 
   // Set default account to 'cash' when accounts load
-  React.useEffect(() => {
+  useEffect(() => {
     if (accounts.length > 0 && selectedAccountId === null) {
       const cashAccount = accounts.find(acc => acc.type === 'cash');
       if (cashAccount) {
@@ -208,7 +216,10 @@ export default function TransactionModal({ visible, onClose }: TransactionModalP
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountScroll}>
                 {accounts.map((account) => {
-                  const accountType = ACCOUNT_TYPES.find(t => t.id === account.type);
+                  // Match account.type with ACCOUNT_TYPES.id or account.account_type
+                  const accountType = ACCOUNT_TYPES.find(t => 
+                    t.id === account.type || t.id === account.account_type
+                  );
                   return (
                     <TouchableOpacity
                       key={account.id}
