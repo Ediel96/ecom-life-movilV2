@@ -1,41 +1,80 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { Transaction } from '../../types';
 
-export interface LifestyleExpense {
-  id: string;
-  name: string;
-  icon: string;
-  amount: number;
+// Transacción recurrente extiende Transaction con frequency obligatorio
+export interface RecurringTransaction extends Omit<Transaction, 'frequency' | 'isRecurring'> {
   frequency: 'monthly' | 'weekly' | 'yearly';
-  category: string;
-  createdAt: string;
+  isRecurring: true;
 }
 
 interface LifestyleState {
-  expenses: LifestyleExpense[];
+  // Lista de IDs de transacciones que son recurrentes
+  recurringTransactionIds: number[];
+  // Configuración de frecuencia por transacción
+  frequencyConfig: {
+    [transactionId: number]: {
+      frequency: 'monthly' | 'weekly' | 'yearly';
+      lastExecuted?: string;
+      nextExecution?: string;
+    };
+  };
 }
 
 const initialState: LifestyleState = {
-  expenses: [],
+  recurringTransactionIds: [],
+  frequencyConfig: {},
 };
 
 const lifestyleSlice = createSlice({
   name: 'lifestyle',
   initialState,
   reducers: {
-    addLifestyleExpense: (state, action: PayloadAction<LifestyleExpense>) => {
-      state.expenses.push(action.payload);
+    // Marcar una transacción como recurrente
+    setTransactionAsRecurring: (state, action: PayloadAction<{
+      transactionId: number;
+      frequency: 'monthly' | 'weekly' | 'yearly';
+    }>) => {
+      const { transactionId, frequency } = action.payload;
+      if (!state.recurringTransactionIds.includes(transactionId)) {
+        state.recurringTransactionIds.push(transactionId);
+      }
+      state.frequencyConfig[transactionId] = {
+        frequency,
+        lastExecuted: new Date().toISOString(),
+      };
     },
-    updateLifestyleExpense: (state, action: PayloadAction<LifestyleExpense>) => {
-      const index = state.expenses.findIndex(e => e.id === action.payload.id);
-      if (index !== -1) {
-        state.expenses[index] = action.payload;
+    
+    // Actualizar frecuencia de una transacción recurrente
+    updateRecurringFrequency: (state, action: PayloadAction<{
+      transactionId: number;
+      frequency: 'monthly' | 'weekly' | 'yearly';
+    }>) => {
+      const { transactionId, frequency } = action.payload;
+      if (state.frequencyConfig[transactionId]) {
+        state.frequencyConfig[transactionId].frequency = frequency;
       }
     },
-    deleteLifestyleExpense: (state, action: PayloadAction<string>) => {
-      state.expenses = state.expenses.filter(e => e.id !== action.payload);
+    
+    // Quitar la marca de recurrente de una transacción
+    removeRecurringTransaction: (state, action: PayloadAction<number>) => {
+      const transactionId = action.payload;
+      state.recurringTransactionIds = state.recurringTransactionIds.filter(id => id !== transactionId);
+      delete state.frequencyConfig[transactionId];
+    },
+    
+    // Limpiar todas las transacciones recurrentes
+    clearRecurringTransactions: (state) => {
+      state.recurringTransactionIds = [];
+      state.frequencyConfig = {};
     },
   },
 });
 
-export const { addLifestyleExpense, updateLifestyleExpense, deleteLifestyleExpense } = lifestyleSlice.actions;
+export const { 
+  setTransactionAsRecurring, 
+  updateRecurringFrequency, 
+  removeRecurringTransaction,
+  clearRecurringTransactions 
+} = lifestyleSlice.actions;
+
 export default lifestyleSlice.reducer;

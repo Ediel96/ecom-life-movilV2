@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Dimensions } from 'react-native';
 import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -19,7 +19,8 @@ export default function DashboardScreen() {
   const theme = useAppSelector((state) => state.theme.mode);
   const categories = useAppSelector((state) => state.categories?.list ?? []);
   const transactionsRaw = useAppSelector((state) => state.transactions?.list);
-  const expenses = useAppSelector((state) => state.lifestyle.expenses);
+  const recurringIds = useAppSelector((state) => state.lifestyle?.recurringTransactionIds || []);
+  const frequencyConfig = useAppSelector((state) => state.lifestyle?.frequencyConfig || {});
   const [modalVisible, setModalVisible] = useState(false);
   const [lifestyleModalVisible, setLifestyleModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
@@ -42,6 +43,18 @@ export default function DashboardScreen() {
     if (!Array.isArray(transactionsRaw)) return [];
     return transactionsRaw;
   }, [transactionsRaw]);
+
+  // Obtener transacciones recurrentes (gastos de estilo de vida)
+  const recurringExpenses = useMemo(() => {
+    return transactions
+      .filter(t => recurringIds.includes(t.id))
+      .map(t => ({
+        ...t,
+        category: categories.find(c => c.id === t.category_id),
+        frequency: frequencyConfig[t.id]?.frequency || 'monthly',
+      }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [transactions, recurringIds, frequencyConfig, categories]);
 
   const handleEditTransaction = (transaction: any) => {
     setSelectedTransaction(transaction);
@@ -224,7 +237,7 @@ export default function DashboardScreen() {
           </TouchableOpacity>
 
           {/* Lifestyle Recurring Expenses */}
-          {expenses.length > 0 && (
+          {recurringExpenses.length > 0 && (
             <View style={[styles.card, isDark ? styles.cardDark : styles.cardLight]}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
@@ -232,20 +245,22 @@ export default function DashboardScreen() {
                 </Text>
                 <View style={[styles.countBadge, isDark ? styles.countBadgeDark : styles.countBadgeLight]}>
                   <Text style={[styles.countBadgeText, isDark ? styles.textWhite : styles.textDark]}>
-                    {expenses.length}
+                    {recurringExpenses.length}
                   </Text>
                 </View>
               </View>
-              {expenses.map((expense) => (
+              {recurringExpenses.map((expense) => (
                 <View
                   key={expense.id}
                   style={[styles.expenseCard, isDark ? styles.expenseCardDark : styles.expenseCardLight]}
                 >
                   <View style={styles.expenseContent}>
-                    <Text style={styles.expenseIcon}>{expense.icon}</Text>
+                    <View style={[styles.expenseIconContainer, { backgroundColor: expense.category?.color_fill || '#10B981' }]}>
+                      <Text style={styles.expenseIcon}>{expense.category?.icon || '💰'}</Text>
+                    </View>
                     <View style={styles.expenseInfo}>
                       <Text style={[styles.expenseName, isDark ? styles.textWhite : styles.textDark]}>
-                        {expense.name}
+                        {expense.description || expense.category?.name || 'Unknown'}
                       </Text>
                       <Text style={[styles.expenseFrequency, isDark ? styles.textGray : styles.textGrayDark]}>
                         {t(`lifestyle.frequency.${expense.frequency}`)}
@@ -900,9 +915,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  expenseIcon: {
-    fontSize: 28,
+  expenseIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
+  },
+  expenseIcon: {
+    fontSize: 22,
   },
   expenseInfo: {
     flex: 1,

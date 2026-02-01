@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   View,
@@ -11,24 +11,18 @@ import {
   Alert,
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { addLifestyleExpense, updateLifestyleExpense, deleteLifestyleExpense, LifestyleExpense } from '../store/slices/lifestyleSlice';
+import { setTransactionAsRecurring, removeRecurringTransaction, updateRecurringFrequency } from '../store/slices/lifestyleSlice';
+import { addTransactionLocal, deleteTransactionThunk } from '../store/slices/transactionsSlice';
 import { useTranslation } from 'react-i18next';
+import { Transaction } from '../types';
 
 interface LifestyleModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
-const LIFESTYLE_CATEGORIES = [
-  { id: 'rent', icon: '🏠', labelKey: 'lifestyle.categories.rent', color: '#3B82F6' },
-  { id: 'groceries', icon: '🛒', labelKey: 'lifestyle.categories.groceries', color: '#10B981' },
-  { id: 'utilities', icon: '💡', labelKey: 'lifestyle.categories.utilities', color: '#F59E0B' },
-  { id: 'water', icon: '💧', labelKey: 'lifestyle.categories.water', color: '#06B6D4' },
-  { id: 'internet', icon: '📡', labelKey: 'lifestyle.categories.internet', color: '#8B5CF6' },
-  { id: 'phone', icon: '📱', labelKey: 'lifestyle.categories.phone', color: '#EC4899' },
-  { id: 'transport', icon: '🚗', labelKey: 'lifestyle.categories.transport', color: '#EF4444' },
-  { id: 'subscription', icon: '📺', labelKey: 'lifestyle.categories.subscription', color: '#6366F1' },
-];
+// Nombres de categorías de estilo de vida para filtrar
+const LIFESTYLE_CATEGORY_NAMES = ['arriendo', 'mercado', 'servicios', 'agua', 'internet', 'teléfono', 'telefono', 'transporte', 'suscripciones', 'suscripción', 'rent', 'groceries', 'utilities', 'water', 'phone', 'subscription'];
 
 const FREQUENCIES = [
   { id: 'monthly', labelKey: 'lifestyle.frequency.monthly' },
@@ -39,20 +33,86 @@ const FREQUENCIES = [
 export default function LifestyleModal({ visible, onClose }: LifestyleModalProps) {
   const { t } = useTranslation();
   const theme = useAppSelector((state) => state.theme.mode);
-  const expenses = useAppSelector((state) => state.lifestyle.expenses);
   const transactions = useAppSelector((state) => state.transactions?.list || []);
   const categories = useAppSelector((state) => state.categories?.list || []);
+  const recurringIds = useAppSelector((state) => state.lifestyle?.recurringTransactionIds || []);
+  const frequencyConfig = useAppSelector((state) => state.lifestyle?.frequencyConfig || {});
   const dispatch = useAppDispatch();
   const isDark = theme === 'dark';
 
-  const [selectedCategory, setSelectedCategory] = useState(LIFESTYLE_CATEGORIES[0]);
-  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [frequency, setFrequency] = useState<'monthly' | 'weekly' | 'yearly'>('monthly');
-  const [editingExpense, setEditingExpense] = useState<LifestyleExpense | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  // Filtrar categorías de estilo de vida (del sistema de categorías existente)
+  const lifestyleCategories = useMemo(() => {
+    return categories.filter(cat => 
+      LIFESTYLE_CATEGORY_NAMES.some(name => 
+        cat.name.toLowerCase().includes(name.toLowerCase())
+      )
+    );
+  }, [categories]);
+
+  // Obtener transacciones recurrentes (de estilo de vida)
+  const recurringTransactions = useMemo(() => {
+    return transactions
+      .filter(t => recurringIds.includes(t.id))
+      .map(t => ({
+        ...t,
+        category: categories.find(c => c.id === t.category_id),
+        frequency: frequencyConfig[t.id]?.frequency || 'monthly',
+      }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [transactions, recurringIds, frequencyConfig, categories]);
+
+  // Calcular total mensual estimado
+  const totalMonthly = useMemo(() => {
+    return recurringTransactions.reduce((sum, t) => {
+      const freq = frequencyConfig[t.id]?.frequency || 'monthly';
+      if (freq === 'monthly') return sum + t.amount;
+      if (freq === 'weekly') return sum + (t.amount * 4);
+      if (freq === 'yearly') return sum + (t.amount / 12);
+      return sum;
+    }, 0);
+  }, [recurringTransactions, frequencyConfig]);
+
+  // Transacciones de estilo de vida (por categoría) que NO son recurrentes aún
+  const lifestyleTransactions = useMemo(() => {
+    return transactions
+      .filter(transaction => {
+        // Excluir las que ya son recurrentes
+        if (recurringIds.includes(transaction.id)) return false;
+        
+        const category = categories.find(c => c.id === transaction.category_id);
+        if (!category) return false;
+        return LIFESTYLE_CATEGORY_NAMES.some(name => 
+          category.name.toLowerCase().includes(name.toLowerCase())
+        );
+      })
+      .map(t => ({
+        ...t,
+        category: categories.find(c => c.id === t.category_id),
+      }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10);
+  }, [transactions, categories, recurringIds]);
+
+  const totalLifestyleTransactions = useMemo(() => {
+    return lifestyleTransactions.reduce((sum, t) => sum + t.amount, 0);
+  }, [lifestyleTransactions]);
+
+  const resetForm = () => {
+    setDescription('');
+    setAmount('');
+    setFrequency('monthly');
+    setSelectedCategoryId(null);
+    setEditingTransaction(null);
+  };
 
   const handleSave = () => {
-    if (!name || !amount) {
+    if (!amount || !selectedCategoryId) {
       Alert.alert(t('common.error'), t('lifestyle.alerts.fillFields'));
       return;
     }
@@ -63,49 +123,51 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
       return;
     }
 
-    if (editingExpense) {
-      // Update existing expense
-      const updated: LifestyleExpense = {
-        ...editingExpense,
-        name,
-        icon: selectedCategory.icon,
-        amount: amountNum,
+    const now = new Date().toISOString();
+    const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+
+    if (editingTransaction) {
+      // Actualizar frecuencia de transacción existente
+      dispatch(updateRecurringFrequency({
+        transactionId: editingTransaction.id,
         frequency,
-        category: selectedCategory.id,
-      };
-      dispatch(updateLifestyleExpense(updated));
+      }));
     } else {
-      // Add new expense
-      const newExpense: LifestyleExpense = {
-        id: Date.now().toString(),
-        name,
-        icon: selectedCategory.icon,
+      // Crear nueva transacción recurrente
+      const newTransaction = {
+        id: Date.now(),
+        description: description || selectedCategory?.name || '',
         amount: amountNum,
-        frequency,
-        category: selectedCategory.id,
-        createdAt: new Date().toISOString(),
+        category_id: selectedCategoryId,
+        account_id: 1,
+        user_id: '',
+        date: now,
+        transaction_type: 'expense' as const,
+        created_at: now,
+        updated_at: now,
       };
-      dispatch(addLifestyleExpense(newExpense));
+      
+      dispatch(addTransactionLocal(newTransaction));
+      
+      // Marcar como recurrente
+      dispatch(setTransactionAsRecurring({
+        transactionId: newTransaction.id,
+        frequency,
+      }));
     }
 
-    // Reset form
-    setName('');
-    setAmount('');
-    setFrequency('monthly');
-    setSelectedCategory(LIFESTYLE_CATEGORIES[0]);
-    setEditingExpense(null);
+    resetForm();
   };
 
-  const handleEdit = (expense: LifestyleExpense) => {
-    setEditingExpense(expense);
-    setName(expense.name);
-    setAmount(expense.amount.toString());
-    setFrequency(expense.frequency);
-    const category = LIFESTYLE_CATEGORIES.find(c => c.id === expense.category);
-    if (category) setSelectedCategory(category);
+  const handleEdit = (transaction: Transaction & { frequency?: string }) => {
+    setEditingTransaction(transaction);
+    setDescription(transaction.description || '');
+    setAmount(transaction.amount.toString());
+    setFrequency((transaction.frequency as 'monthly' | 'weekly' | 'yearly') || 'monthly');
+    setSelectedCategoryId(transaction.category_id);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (transactionId: number) => {
     Alert.alert(
       t('lifestyle.alerts.deleteTitle'),
       t('lifestyle.alerts.deleteMessage'),
@@ -114,49 +176,34 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
         {
           text: t('common.delete'),
           style: 'destructive',
-          onPress: () => dispatch(deleteLifestyleExpense(id)),
+          onPress: () => {
+            dispatch(removeRecurringTransaction(transactionId));
+            dispatch(deleteTransactionThunk(transactionId));
+          },
         },
       ]
     );
   };
 
-  const totalMonthly = expenses.reduce((sum, expense) => {
-    if (expense.frequency === 'monthly') return sum + expense.amount;
-    if (expense.frequency === 'weekly') return sum + (expense.amount * 4);
-    if (expense.frequency === 'yearly') return sum + (expense.amount / 12);
-    return sum;
-  }, 0);
-
-  // Filtrar transacciones de estilo de vida
-  const lifestyleCategoryNames = LIFESTYLE_CATEGORIES.map(cat => t(cat.labelKey).toLowerCase());
-  
-  const lifestyleTransactions = transactions
-    .filter(transaction => {
-      const category = categories.find(c => c.id === transaction.category_id);
-      if (!category) return false;
-      const categoryName = category.name.toLowerCase();
-      return lifestyleCategoryNames.some(lifestyle => 
-        categoryName.includes(lifestyle) || 
-        categoryName === 'arriendo' || 
-        categoryName === 'mercado' ||
-        categoryName === 'servicios' ||
-        categoryName === 'agua' ||
-        categoryName === 'internet' ||
-        categoryName === 'teléfono' ||
-        categoryName === 'telefono' ||
-        categoryName === 'transporte' ||
-        categoryName === 'suscripciones' ||
-        categoryName === 'suscripción'
-      );
-    })
-    .map(t => ({
-      ...t,
-      category: categories.find(c => c.id === t.category_id),
-    }))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 10); // Últimas 10 transacciones
-
-  const totalLifestyleTransactions = lifestyleTransactions.reduce((sum, t) => sum + t.amount, 0);
+  // Marcar una transacción existente como recurrente
+  const handleMakeRecurring = (transaction: Transaction) => {
+    Alert.alert(
+      t('lifestyle.alerts.makeRecurringTitle') || 'Hacer Recurrente',
+      t('lifestyle.alerts.makeRecurringMessage') || '¿Marcar esta transacción como gasto recurrente?',
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm') || 'Confirmar',
+          onPress: () => {
+            dispatch(setTransactionAsRecurring({
+              transactionId: transaction.id,
+              frequency: 'monthly',
+            }));
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -183,36 +230,38 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
               </Text>
             </View>
 
-            {/* Category Selector */}
+            {/* Category Selector - Usa categorías del sistema */}
             <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
               {t('common.category')}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-              {LIFESTYLE_CATEGORIES.map((category) => (
+              {lifestyleCategories.map((category) => (
                 <TouchableOpacity
                   key={category.id}
-                  onPress={() => setSelectedCategory(category)}
+                  onPress={() => setSelectedCategoryId(category.id)}
                   style={[
                     styles.categoryItem,
-                    selectedCategory.id === category.id && [styles.categoryItemSelected, { borderColor: category.color }],
+                    selectedCategoryId === category.id && [styles.categoryItemSelected, { borderColor: category.color_fill }],
                     isDark ? styles.categoryItemDark : styles.categoryItemLight,
                   ]}
                 >
-                  <Text style={styles.categoryIcon}>{category.icon}</Text>
+                  <View style={[styles.categoryIconContainer, { backgroundColor: category.color_fill }]}>
+                    <Text style={styles.categoryIconLarge}>{category.icon}</Text>
+                  </View>
                   <Text style={[styles.categoryLabel, isDark ? styles.textWhite : styles.textDark]}>
-                    {t(category.labelKey)}
+                    {category.name}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            {/* Name */}
+            {/* Description */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>{t('common.name')}</Text>
+              <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>{t('common.description')}</Text>
               <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder={t('lifestyle.placeholders.name', { category: t(selectedCategory.labelKey) })}
+                value={description}
+                onChangeText={setDescription}
+                placeholder={t('lifestyle.placeholders.name', { category: '' })}
                 placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                 style={[styles.input, isDark ? styles.inputDark : styles.inputLight, isDark ? styles.textWhite : styles.textDark]}
               />
@@ -261,40 +310,42 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
             {/* Save Button */}
             <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
               <Text style={styles.saveButtonText}>
-                {editingExpense ? t('lifestyle.updateExpense') : t('lifestyle.addExpense')}
+                {editingTransaction ? t('lifestyle.updateExpense') : t('lifestyle.addExpense')}
               </Text>
             </TouchableOpacity>
 
-            {/* Expenses List */}
-            {expenses.length > 0 && (
+            {/* Recurring Transactions List */}
+            {recurringTransactions.length > 0 && (
               <View style={styles.expensesList}>
                 <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
                   {t('lifestyle.recurringExpenses')}
                 </Text>
-                {expenses.map((expense) => (
+                {recurringTransactions.map((transaction) => (
                   <View
-                    key={expense.id}
+                    key={transaction.id}
                     style={[styles.expenseCard, isDark ? styles.expenseCardDark : styles.expenseCardLight]}
                   >
                     <View style={styles.expenseContent}>
-                      <Text style={styles.expenseIcon}>{expense.icon}</Text>
+                      <View style={[styles.expenseIconContainer, { backgroundColor: transaction.category?.color_fill || '#10B981' }]}>
+                        <Text style={styles.expenseIcon}>{transaction.category?.icon || '💰'}</Text>
+                      </View>
                       <View style={styles.expenseInfo}>
                         <Text style={[styles.expenseName, isDark ? styles.textWhite : styles.textDark]}>
-                          {expense.name}
+                          {transaction.description || transaction.category?.name || 'Unknown'}
                         </Text>
                         <Text style={[styles.expenseFrequency, isDark ? styles.textGray : styles.textGrayDark]}>
-                          {t(`lifestyle.frequency.${expense.frequency}`)}
+                          {t(`lifestyle.frequency.${transaction.frequency}`)}
                         </Text>
                       </View>
                       <Text style={[styles.expenseAmount, styles.textGreen]}>
-                        ${expense.amount.toLocaleString('en-US')}
+                        ${transaction.amount.toLocaleString('en-US')}
                       </Text>
                     </View>
                     <View style={styles.expenseActions}>
-                      <TouchableOpacity onPress={() => handleEdit(expense)} style={styles.actionBtn}>
+                      <TouchableOpacity onPress={() => handleEdit(transaction)} style={styles.actionBtn}>
                         <Text style={styles.actionText}>✏️</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDelete(expense.id)} style={styles.actionBtn}>
+                      <TouchableOpacity onPress={() => handleDelete(transaction.id)} style={styles.actionBtn}>
                         <Text style={styles.actionText}>🗑️</Text>
                       </TouchableOpacity>
                     </View>
@@ -303,7 +354,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
               </View>
             )}
 
-            {/* Lifestyle Transactions */}
+            {/* Lifestyle Transactions (not yet recurring) */}
             {lifestyleTransactions.length > 0 && (
               <View style={styles.transactionsList}>
                 <View style={styles.transactionsHeader}>
@@ -317,8 +368,9 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
                   </View>
                 </View>
                 {lifestyleTransactions.map((transaction) => (
-                  <View
+                  <TouchableOpacity
                     key={transaction.id}
+                    onPress={() => handleMakeRecurring(transaction)}
                     style={[styles.transactionCard, isDark ? styles.transactionCardDark : styles.transactionCardLight]}
                   >
                     <View style={styles.transactionContent}>
@@ -338,12 +390,20 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
                           </Text>
                         )}
                       </View>
-                      <Text style={[styles.transactionAmount, styles.textRed]}>
-                        -${Math.abs(transaction.amount).toLocaleString('en-US')}
-                      </Text>
+                      <View style={styles.makeRecurringHint}>
+                        <Text style={[styles.makeRecurringText, isDark ? styles.textGray : styles.textGrayDark]}>
+                          🔄
+                        </Text>
+                        <Text style={[styles.transactionAmount, styles.textRed]}>
+                          -${Math.abs(transaction.amount).toLocaleString('en-US')}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
+                <Text style={[styles.hintText, isDark ? styles.textGray : styles.textGrayDark]}>
+                  {t('lifestyle.tapToMakeRecurring') || 'Toca una transacción para hacerla recurrente'}
+                </Text>
               </View>
             )}
 
@@ -440,9 +500,16 @@ const styles = StyleSheet.create({
   categoryItemSelected: {
     borderWidth: 2,
   },
-  categoryIcon: {
-    fontSize: 32,
-    marginBottom: 4,
+  categoryIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryIconLarge: {
+    fontSize: 24,
   },
   categoryLabel: {
     fontSize: 12,
@@ -532,9 +599,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  expenseIcon: {
-    fontSize: 28,
+  expenseIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
+  },
+  expenseIcon: {
+    fontSize: 22,
   },
   expenseInfo: {
     flex: 1,
@@ -633,5 +707,18 @@ const styles = StyleSheet.create({
   transactionAmount: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  makeRecurringHint: {
+    alignItems: 'flex-end',
+  },
+  makeRecurringText: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  hintText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });

@@ -14,7 +14,8 @@
     "description": "Descripción",
     "date": "Fecha",
     "category": "Categoría",
-    "categories": "Categorías"
+    "categories": "Categorías",
+    "confirm": "Confirmar"
   },
   "dashboard": {
     "title": "OrganizeLife",
@@ -75,8 +76,13 @@
       "deleteTitle": "Eliminar Gasto",
       "deleteMessage": "¿Estás seguro de eliminar este gasto recurrente?",
       "fillFields": "Por favor llena todos los campos",
-      "validAmount": "Por favor ingresa un monto válido"
-    }
+      "validAmount": "Por favor ingresa un monto válido",
+      "makeRecurringTitle": "Hacer Recurrente",
+      "makeRecurringMessage": "¿Marcar esta transacción como gasto recurrente mensual?",
+      "removeRecurringTitle": "Quitar Recurrente",
+      "removeRecurringMessage": "¿Quitar esta transacción de gastos recurrentes?"
+    },
+    "tapToMakeRecurring": "Toca una transacción para hacerla recurrente"
   },
   "transactions": {
     "modal": {

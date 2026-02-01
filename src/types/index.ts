@@ -21,6 +21,9 @@ export interface Transaction {
   date: string;
   created_at: string;
   updated_at: string;
+  // Campo opcional para gastos recurrentes de estilo de vida
+  frequency?: 'monthly' | 'weekly' | 'yearly';
+  isRecurring?: boolean;
 }
 
 export interface User {

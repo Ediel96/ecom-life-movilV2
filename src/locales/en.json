@@ -14,7 +14,8 @@
     "description": "Description",
     "date": "Date",
     "category": "Category",
-    "categories": "Categories"
+    "categories": "Categories",
+    "confirm": "Confirm"
   },
   "dashboard": {
     "title": "OrganizeLife",
@@ -75,8 +76,13 @@
       "deleteTitle": "Delete Expense",
       "deleteMessage": "Are you sure you want to delete this recurring expense?",
       "fillFields": "Please fill all fields",
-      "validAmount": "Please enter a valid amount"
-    }
+      "validAmount": "Please enter a valid amount",
+      "makeRecurringTitle": "Make Recurring",
+      "makeRecurringMessage": "Mark this transaction as a monthly recurring expense?",
+      "removeRecurringTitle": "Remove Recurring",
+      "removeRecurringMessage": "Remove this transaction from recurring expenses?"
+    },
+    "tapToMakeRecurring": "Tap a transaction to make it recurring"
   },
   "transactions": {
     "modal": {
