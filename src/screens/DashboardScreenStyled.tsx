@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { PieChart } from 'react-native-gifted-charts';
 import TransactionModal from '../components/TransactionModalStyled';
+import LifestyleModal from '../components/LifestyleModal';
 import { Category } from '../types';
-import { fetchTransactions } from '../store/slices/transactionsSlice';
+import { fetchTransactions, deleteTransactionThunk } from '../store/slices/transactionsSlice';
 
 interface CategoryWithTotal extends Category {
   total: number;
@@ -16,6 +18,8 @@ export default function DashboardScreen() {
   const categories = useAppSelector((state) => state.categories?.list ?? []);
   const transactionsRaw = useAppSelector((state) => state.transactions?.list);
   const [modalVisible, setModalVisible] = useState(false);
+  const [lifestyleModalVisible, setLifestyleModalVisible] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [selectedTab, setSelectedTab] = useState<'expenses' | 'income'>('expenses');
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'year'>('day');
 
@@ -33,6 +37,52 @@ export default function DashboardScreen() {
     if (!Array.isArray(transactionsRaw)) return [];
     return transactionsRaw;
   }, [transactionsRaw]);
+
+  const handleEditTransaction = (transaction: any) => {
+    setSelectedTransaction(transaction);
+    setModalVisible(true);
+  };
+
+  const handleDeleteTransaction = (transaction: any) => {
+    Alert.alert(
+      'Delete Transaction',
+      'Are you sure you want to delete this transaction? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => dispatch(deleteTransactionThunk(transaction.id)),
+        },
+      ]
+    );
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSelectedTransaction(null);
+  };
+
+  const renderRightActions = (transaction: any) => (
+    <View style={styles.swipeActions}>
+      <TouchableOpacity
+        style={[styles.actionButton, styles.editButton]}
+        onPress={() => handleEditTransaction(transaction)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.actionIcon}>✏️</Text>
+        <Text style={styles.actionText}>Edit</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.actionButton, styles.deleteButton]}
+        onPress={() => handleDeleteTransaction(transaction)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.actionIcon}>🗑️</Text>
+        <Text style={styles.actionText}>Delete</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   // Calculate totals per category
   console.log('Transactions:', transactions, 'Type:', typeof transactions, 'IsArray:', Array.isArray(transactions));
@@ -64,8 +114,9 @@ export default function DashboardScreen() {
     }));
 
   return (
-    <View style={[styles.container, isDark ? styles.bgDark : styles.bgLight]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={[styles.container, isDark ? styles.bgDark : styles.bgLight]}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <Text style={[styles.header, isDark ? styles.textWhite : styles.textDark]}>
           OrganizeLife
@@ -112,6 +163,29 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Lifestyle Button */}
+        <TouchableOpacity 
+          onPress={() => setLifestyleModalVisible(true)}
+          style={[styles.lifestyleButton, isDark ? styles.lifestyleButtonDark : styles.lifestyleButtonLight]}
+        >
+          <View style={styles.lifestyleButtonContent}>
+            <View style={styles.lifestyleIconContainer}>
+              <Text style={styles.lifestyleIcon}>🏠</Text>
+            </View>
+            <View style={styles.lifestyleTextContainer}>
+              <Text style={[styles.lifestyleButtonTitle, isDark ? styles.textWhite : styles.textDark]}>
+                Configurar Estilo de Vida
+              </Text>
+              <Text style={[styles.lifestyleButtonSubtitle, isDark ? styles.textGray : styles.textGrayDark]}>
+                Gestiona tus gastos recurrentes
+              </Text>
+            </View>
+            <Text style={[styles.lifestyleArrow, isDark ? styles.textGray : styles.textGrayDark]}>
+              →
+            </Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Expenses Overview Card */}
         <View style={[styles.card, isDark ? styles.cardDark : styles.cardLight]}>
@@ -170,32 +244,37 @@ export default function DashboardScreen() {
               Recent Transactions
             </Text>
             {recentTransactions.map((transaction, index) => (
-              <View
+              <Swipeable
                 key={transaction.id || index}
-                style={[styles.transactionCard, isDark ? styles.cardDark : styles.cardLight]}
+                renderRightActions={() => renderRightActions(transaction)}
+                overshootRight={false}
               >
-                <View style={styles.transactionContent}>
-                  <View style={[styles.iconContainer, { backgroundColor: transaction.category?.color_fill || '#10B981' }]}>
-                    <Text style={styles.iconText}>{transaction.category?.icon || '💰'}</Text>
-                  </View>
-                  <View style={styles.transactionInfo}>
-                    <Text style={[styles.transactionName, isDark ? styles.textWhite : styles.textDark]}>
-                      {transaction.category?.name || 'Unknown'}
-                    </Text>
-                    <View style={styles.transactionMeta}>
-                      <Text style={[styles.metaText, isDark ? styles.textGray : styles.textGrayDark]}>
-                        📅 {transaction.date ? format(parseISO(transaction.date), 'dd MMM yyyy, HH:mm') : ''}
+                <View
+                  style={[styles.transactionCard, isDark ? styles.cardDark : styles.cardLight]}
+                >
+                  <View style={styles.transactionContent}>
+                    <View style={[styles.iconContainer, { backgroundColor: transaction.category?.color_fill || '#10B981' }]}>
+                      <Text style={styles.iconText}>{transaction.category?.icon || '💰'}</Text>
+                    </View>
+                    <View style={styles.transactionInfo}>
+                      <Text style={[styles.transactionName, isDark ? styles.textWhite : styles.textDark]}>
+                        {transaction.category?.name || 'Unknown'}
                       </Text>
-                      <Text style={[styles.metaText, isDark ? styles.textGray : styles.textGrayDark]}>
-                        💪 {transaction.description || transaction.category?.name}
-                      </Text>
+                      <View style={styles.transactionMeta}>
+                        <Text style={[styles.metaText, isDark ? styles.textGray : styles.textGrayDark]}>
+                          📅 {transaction.date ? format(parseISO(transaction.date), 'dd MMM yyyy, HH:mm') : ''}
+                        </Text>
+                        <Text style={[styles.metaText, isDark ? styles.textGray : styles.textGrayDark]}>
+                          💪 {transaction.description || transaction.category?.name}
+                        </Text>
+                      </View>
                     </View>
                   </View>
+                  <Text style={styles.amountText}>
+                    - ${(transaction.amount || 0).toFixed(2)}
+                  </Text>
                 </View>
-                <Text style={styles.amountText}>
-                  - ${(transaction.amount || 0).toFixed(2)}
-                </Text>
-              </View>
+              </Swipeable>
             ))}
           </View>
         )}
@@ -210,8 +289,18 @@ export default function DashboardScreen() {
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
-      <TransactionModal visible={modalVisible} onClose={() => setModalVisible(false)} />
-    </View>
+      <TransactionModal 
+        visible={modalVisible} 
+        onClose={handleCloseModal}
+        transaction={selectedTransaction}
+      />
+
+      <LifestyleModal 
+        visible={lifestyleModalVisible}
+        onClose={() => setLifestyleModalVisible(false)}
+      />
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -290,11 +379,58 @@ const styles = StyleSheet.create({
     backgroundColor: '#1F2937',
   },
   periodButtonInactiveLight: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E5E7EB',
   },
   periodTextActive: {
-    color: '#FFFFFF',
+    color: '#10B981',
     fontWeight: '600',
+  },
+  lifestyleButton: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  lifestyleButtonDark: {
+    backgroundColor: '#1F2937',
+  },
+  lifestyleButtonLight: {
+    backgroundColor: '#FFFFFF',
+  },
+  lifestyleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  lifestyleIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  lifestyleIcon: {
+    fontSize: 24,
+  },
+  lifestyleTextContainer: {
+    flex: 1,
+  },
+  lifestyleButtonTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  lifestyleButtonSubtitle: {
+    fontSize: 13,
+  },
+  lifestyleArrow: {
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   card: {
     borderRadius: 16,
@@ -432,5 +568,31 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 32,
     fontWeight: 'bold',
+  },
+  swipeActions: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  actionButton: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+  },
+  editButton: {
+    backgroundColor: '#3B82F6',
+    marginRight: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+  },
+  actionIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  actionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

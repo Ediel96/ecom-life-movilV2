@@ -9,12 +9,13 @@ import categoriesReducer from './slices/categoriesSlice';
 import transactionsReducer from './slices/transactionsSlice';
 import goalsReducer from './slices/goalsSlice';
 import accountsReducer from './slices/accountsSilce';
+import lifestyleReducer from './slices/lifestyleSlice';
 import { apiSlice } from '../api/apiSlice';
 
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['counter', 'theme', 'auth', 'categories', 'transactions', 'goals', 'accounts'],
+  whitelist: ['counter', 'theme', 'auth', 'categories', 'transactions', 'goals', 'accounts', 'lifestyle'],
   blacklist: [],
 };
 
@@ -33,6 +34,7 @@ const rootReducer = combineReducers({
   transactions: transactionsReducer,
   goals: goalsReducer,
   accounts: accountsReducer,
+  lifestyle: lifestyleReducer,
   [apiSlice.reducerPath]: apiSlice.reducer,
 });
 

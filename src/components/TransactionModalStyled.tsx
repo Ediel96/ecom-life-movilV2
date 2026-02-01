@@ -9,12 +9,14 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { addTransactionLocal } from '../store/slices/transactionsSlice';
+import { addTransactionLocal, updateTransactionThunk } from '../store/slices/transactionsSlice';
 import { fetchAccounts } from '../store/slices/accountsSilce';
+import { Transaction } from '../types';
 
 interface TransactionModalProps {
   visible: boolean;
   onClose: () => void;
+  transaction?: Transaction | null;
 }
 
 const ACCOUNT_TYPES = [
@@ -24,11 +26,12 @@ const ACCOUNT_TYPES = [
   { id: 'saving', icon: '🐷', label: 'Saving' },
 ];
 
-export default function TransactionModal({ visible, onClose }: TransactionModalProps) {
+export default function TransactionModal({ visible, onClose, transaction }: TransactionModalProps) {
   const theme = useAppSelector((state) => state.theme.mode);
   const categories = useAppSelector((state) => state.categories.list);
   const accounts = useAppSelector((state) => state.accounts.list);
   const dispatch = useAppDispatch();
+  const isEditing = !!transaction;
 
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
   const [description, setDescription] = useState('');
@@ -37,6 +40,24 @@ export default function TransactionModal({ visible, onClose }: TransactionModalP
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
 
   const isDark = theme === 'dark';
+
+  // Load transaction data when editing
+  useEffect(() => {
+    if (transaction && visible) {
+      setTransactionType(transaction.transaction_type || 'expense');
+      setDescription(transaction.description || '');
+      setAmount(transaction.amount?.toString() || '');
+      setSelectedCategoryId(transaction.category_id || null);
+      setSelectedAccountId(transaction.account_id || null);
+    } else if (!visible) {
+      // Reset when closing
+      setTransactionType('expense');
+      setDescription('');
+      setAmount('');
+      setSelectedCategoryId(null);
+      setSelectedAccountId(null);
+    }
+  }, [transaction, visible]);
 
   // Fetch accounts when modal opens
   useEffect(() => {
@@ -70,20 +91,35 @@ export default function TransactionModal({ visible, onClose }: TransactionModalP
 
     const now = new Date().toISOString();
 
-    dispatch(
-      addTransactionLocal({
-        id: Date.now(),
+    if (isEditing && transaction) {
+      // Update existing transaction
+      const updatedTransaction: Transaction = {
+        ...transaction,
         description,
         amount: parseFloat(amount),
         category_id: selectedCategoryId,
         account_id: selectedAccountId,
-        user_id: '',
-        date: now,
         transaction_type: transactionType,
-        created_at: now,
         updated_at: now,
-      })
-    );
+      };
+      dispatch(updateTransactionThunk(updatedTransaction));
+    } else {
+      // Create new transaction
+      dispatch(
+        addTransactionLocal({
+          id: Date.now(),
+          description,
+          amount: parseFloat(amount),
+          category_id: selectedCategoryId,
+          account_id: selectedAccountId,
+          user_id: '',
+          date: now,
+          transaction_type: transactionType,
+          created_at: now,
+          updated_at: now,
+        })
+      );
+    }
 
     // Reset form
     setDescription('');
@@ -105,7 +141,7 @@ export default function TransactionModal({ visible, onClose }: TransactionModalP
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.title, isDark ? styles.textWhite : styles.textDark]}>
-              New Transaction
+              {isEditing ? 'Edit Transaction' : 'New Transaction'}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeText}>✕</Text>
@@ -255,7 +291,7 @@ export default function TransactionModal({ visible, onClose }: TransactionModalP
             </TouchableOpacity>
             <TouchableOpacity onPress={handleSave} style={[styles.button, styles.buttonSave]}>
               <Text style={[styles.buttonText, styles.buttonTextSave]}>
-                Save
+                {isEditing ? 'Save Changes' : 'Save'}
               </Text>
             </TouchableOpacity>
           </View>

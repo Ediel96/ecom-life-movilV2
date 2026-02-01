@@ -59,7 +59,10 @@ const goalsSlice = createSlice({
     updateGoalProgress: (state, action: PayloadAction<{ id: string; amount: number }>) => {
       const goal = state.list.find(g => g.id === action.payload.id);
       if (goal) {
-        goal.savedAmount += action.payload.amount;
+        goal.savedAmount = goal.savedAmount + action.payload.amount;
+        console.log('Goal updated:', { id: action.payload.id, newSavedAmount: goal.savedAmount });
+      } else {
+        console.log('Goal not found:', action.payload.id);
       }
     },
   },

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput, Modal } from 'react-native';
+import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { deleteGoal } from '../store/slices/goalsSlice';
+import { deleteGoal, updateGoal, updateGoalProgress } from '../store/slices/goalsSlice';
 import GoalModal from '../components/GoalModal';
 
 export default function GoalsScreen() {
@@ -9,8 +10,13 @@ export default function GoalsScreen() {
   const goals = useAppSelector((state) => state.goals.list);
   const dispatch = useAppDispatch();
   const [modalVisible, setModalVisible] = useState(false);
+  const [addMoneyModalVisible, setAddMoneyModalVisible] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [amountToAdd, setAmountToAdd] = useState('');
   
   const isDark = theme === 'dark';
+
+  console.log('GoalsScreen render, goals count:', goals.length, 'Total saved:', goals.reduce((sum, g) => sum + g.savedAmount, 0));
 
   const totalSaved = goals.reduce((sum, goal) => sum + goal.savedAmount, 0);
   const monthlyExpenses = 1170; // Mock data
@@ -24,13 +30,84 @@ export default function GoalsScreen() {
     return Math.round((goal.savedAmount / goal.targetAmount) * 100);
   };
 
-  const handleDeleteGoal = (id: string) => {
-    dispatch(deleteGoal(id));
+  const handleDeleteGoal = (goal: any) => {
+    Alert.alert(
+      'Delete Goal',
+      `Are you sure you want to delete "${goal.name}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => dispatch(deleteGoal(goal.id)),
+        },
+      ]
+    );
   };
 
+  const handleEditGoal = (goal: any) => {
+    setSelectedGoal(goal);
+    setModalVisible(true);
+  };
+
+  const handleAddMoney = (goal: any) => {
+    setSelectedGoal(goal);
+    setAddMoneyModalVisible(true);
+  };
+
+  const handleSaveAddMoney = () => {
+    if (!selectedGoal || !amountToAdd) return;
+
+    const amount = parseFloat(amountToAdd);
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
+
+    console.log('Adding money:', { goalId: selectedGoal.id, amount });
+    dispatch(updateGoalProgress({ id: selectedGoal.id, amount }));
+    
+    // Clear state and close modal
+    setAmountToAdd('');
+    setAddMoneyModalVisible(false);
+    setSelectedGoal(null);
+  };
+
+  const handleAddGoal = () => {
+    setSelectedGoal(null);
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setSelectedGoal(null);
+  };
+
+  const renderRightActions = (goal: any) => (
+    <View style={styles.swipeActions}>
+      <TouchableOpacity
+        style={[styles.actionButtonSwipe, styles.editButton]}
+        onPress={() => handleEditGoal(goal)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.actionIconSwipe}>✏️</Text>
+        <Text style={styles.actionTextSwipe}>Edit</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.actionButtonSwipe, styles.deleteButton]}
+        onPress={() => handleDeleteGoal(goal)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.actionIconSwipe}>🗑️</Text>
+        <Text style={styles.actionTextSwipe}>Delete</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <View style={[styles.container, isDark ? styles.bgDark : styles.bgLight]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={[styles.container, isDark ? styles.bgDark : styles.bgLight]}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <Text style={[styles.header, isDark ? styles.textWhite : styles.textDark]}>
           Financial Goals
@@ -111,96 +188,150 @@ export default function GoalsScreen() {
         {/* Goals List */}
         {goals.map((goal) => {
           const progress = getProgressPercentage(goal);
+          const isCompleted = progress >= 100;
           return (
-            <View
+            <Swipeable
               key={goal.id}
-              style={[styles.goalCard, isDark ? styles.cardDark : styles.cardLight]}
+              renderRightActions={() => renderRightActions(goal)}
+              overshootRight={false}
             >
-              {/* Goal Header */}
-              <View style={styles.goalHeader}>
-                <View style={styles.goalTitleRow}>
-                  <Text style={styles.goalIcon}>{goal.icon}</Text>
-                  <View style={styles.goalTitleContainer}>
-                    <Text style={[styles.goalName, isDark ? styles.textWhite : styles.textDark]}>
-                      {goal.name}
+              <View
+                style={[styles.goalCard, isDark ? styles.cardDark : styles.cardLight]}
+              >
+                {/* Goal Header */}
+                <View style={styles.goalHeader}>
+                  <View style={styles.goalTitleRow}>
+                    <Text style={styles.goalIcon}>{goal.icon}</Text>
+                    <View style={styles.goalTitleContainer}>
+                      <Text style={[styles.goalName, isDark ? styles.textWhite : styles.textDark]}>
+                        {goal.name}
+                      </Text>
+                      <Text style={[styles.goalAmount, styles.textGreen]}>
+                        $ {formatCurrency(goal.targetAmount)}
+                      </Text>
+                    </View>
+                  </View>
+                  {!isCompleted && (
+                    <TouchableOpacity
+                      style={styles.addMoneyButton}
+                      onPress={() => handleAddMoney(goal)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.addMoneyIcon}>+</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Progress Bar */}
+                <View style={[styles.progressBar, isDark ? styles.progressBarDark : styles.progressBarLight]}>
+                  <View style={[styles.progressFill, { width: `${Math.min(progress, 100)}%` }]} />
+                </View>
+
+                {/* Goal Details */}
+                <View style={styles.goalDetails}>
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailLabel, isDark ? styles.textGray : styles.textGrayDark]}>
+                      Period:
                     </Text>
-                    <Text style={[styles.goalAmount, styles.textGreen]}>
-                      $ {formatCurrency(goal.targetAmount)}
+                    <Text style={[styles.detailValue, isDark ? styles.textWhite : styles.textDark]}>
+                      {goal.periodMonths} months
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailLabel, isDark ? styles.textGray : styles.textGrayDark]}>
+                      Monthly:
+                    </Text>
+                    <Text style={[styles.detailValue, isDark ? styles.textWhite : styles.textDark]}>
+                      $ {formatCurrency(goal.monthlyContribution)}
                     </Text>
                   </View>
                 </View>
-                <View style={styles.goalActions}>
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => {/* TODO: Edit goal */}}
-                  >
-                    <Text style={styles.actionIcon}>✏️</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => handleDeleteGoal(goal.id)}
-                  >
-                    <Text style={styles.actionIcon}>🗑️</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
 
-              {/* Progress Bar */}
-              <View style={[styles.progressBar, isDark ? styles.progressBarDark : styles.progressBarLight]}>
-                <View style={[styles.progressFill, { width: `${progress}%` }]} />
-              </View>
-
-              {/* Goal Details */}
-              <View style={styles.goalDetails}>
-                <View style={styles.detailItem}>
-                  <Text style={[styles.detailLabel, isDark ? styles.textGray : styles.textGrayDark]}>
-                    Period:
-                  </Text>
-                  <Text style={[styles.detailValue, isDark ? styles.textWhite : styles.textDark]}>
-                    {goal.periodMonths} months
-                  </Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Text style={[styles.detailLabel, isDark ? styles.textGray : styles.textGrayDark]}>
-                    Monthly:
-                  </Text>
-                  <Text style={[styles.detailValue, isDark ? styles.textWhite : styles.textDark]}>
-                    $ {formatCurrency(goal.monthlyContribution)}
-                  </Text>
+                <View style={styles.goalDetails}>
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailLabel, isDark ? styles.textGray : styles.textGrayDark]}>
+                      Saved:
+                    </Text>
+                    <Text style={[styles.detailValue, isDark ? styles.textWhite : styles.textDark]}>
+                      $ {formatCurrency(goal.savedAmount)}
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailValue, isCompleted ? styles.textCompleted : styles.textGreen]}>
+                      {progress}% {isCompleted ? '✅ Completed!' : 'savings'}
+                    </Text>
+                  </View>
                 </View>
               </View>
-
-              <View style={styles.goalDetails}>
-                <View style={styles.detailItem}>
-                  <Text style={[styles.detailLabel, isDark ? styles.textGray : styles.textGrayDark]}>
-                    Saved:
-                  </Text>
-                  <Text style={[styles.detailValue, isDark ? styles.textWhite : styles.textDark]}>
-                    $ {formatCurrency(goal.savedAmount)}
-                  </Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Text style={[styles.detailValue, styles.textGreen]}>
-                    {progress}% savings
-                  </Text>
-                </View>
-              </View>
-            </View>
+            </Swipeable>
           );
         })}
       </ScrollView>
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        onPress={() => setModalVisible(true)}
+        onPress={handleAddGoal}
         style={styles.fab}
         activeOpacity={0.8}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
-      <GoalModal visible={modalVisible} onClose={() => setModalVisible(false)} />
-    </View>
+      <GoalModal 
+        visible={modalVisible} 
+        onClose={handleCloseModal}
+        goal={selectedGoal}
+      />
+
+      {/* Add Money Modal */}
+      <Modal
+        visible={addMoneyModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAddMoneyModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.addMoneyModal, isDark ? styles.modalDark : styles.modalLight]}>
+            <Text style={[styles.modalTitle, isDark ? styles.textWhite : styles.textDark]}>
+              Add Money to {selectedGoal?.name}
+            </Text>
+            <Text style={[styles.modalSubtitle, isDark ? styles.textGray : styles.textGrayDark]}>
+              Current: ${formatCurrency(selectedGoal?.savedAmount || 0)} / ${formatCurrency(selectedGoal?.targetAmount || 0)}
+            </Text>
+            <TextInput
+              value={amountToAdd}
+              onChangeText={setAmountToAdd}
+              placeholder="Enter amount"
+              placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+              keyboardType="numeric"
+              style={[styles.modalInput, isDark ? styles.inputDark : styles.inputLight, isDark ? styles.textWhite : styles.textDark]}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => {
+                  setAddMoneyModalVisible(false);
+                  setAmountToAdd('');
+                }}
+                style={[styles.modalButton, styles.cancelButton]}
+              >
+                <Text style={[styles.modalButtonText, isDark ? styles.textWhite : styles.textDark]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveAddMoney}
+                style={[styles.modalButton, styles.saveButton]}
+              >
+                <Text style={[styles.modalButtonText, styles.textWhite]}>
+                  Add Money
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -245,6 +376,9 @@ const styles = StyleSheet.create({
   },
   textGreen: {
     color: '#10B981',
+  },
+  textCompleted: {
+    color: '#F59E0B',
   },
   
   // Overview Card
@@ -452,5 +586,122 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 32,
     fontWeight: 'bold',
+  },
+  
+  // Swipe Actions
+  swipeActions: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  actionButtonSwipe: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+  },
+  editButton: {
+    backgroundColor: '#3B82F6',
+    marginRight: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+  },
+  actionIconSwipe: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  actionTextSwipe: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // Add Money Button
+  addMoneyButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  addMoneyIcon: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+
+  // Add Money Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addMoneyModal: {
+    width: '85%',
+    borderRadius: 20,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalInput: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 18,
+    marginBottom: 20,
+    borderWidth: 1,
+    textAlign: 'center',
+  },
+  inputDark: {
+    backgroundColor: '#0F172A',
+    borderColor: '#334155',
+  },
+  inputLight: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#D1D5DB',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#6B7280',
+  },
+  saveButton: {
+    backgroundColor: '#10B981',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalDark: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  modalLight: {
+    backgroundColor: '#FFFFFF',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,23 +10,45 @@ import {
   Platform,
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { addGoal } from '../store/slices/goalsSlice';
+import { addGoal, updateGoal } from '../store/slices/goalsSlice';
+import type { Goal } from '../store/slices/goalsSlice';
 
 interface GoalModalProps {
   visible: boolean;
   onClose: () => void;
+  goal?: Goal | null;
 }
 
-export default function GoalModal({ visible, onClose }: GoalModalProps) {
+export default function GoalModal({ visible, onClose, goal }: GoalModalProps) {
   const theme = useAppSelector((state) => state.theme.mode);
   const dispatch = useAppDispatch();
   const isDark = theme === 'dark';
+  const isEditing = !!goal;
 
   const [goalName, setGoalName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [monthlyContribution, setMonthlyContribution] = useState('');
+  const [selectedIcon, setSelectedIcon] = useState('🎯');
 
-  const handleCreate = () => {
+  const icons = ['🎯', '🏍️', '🏠', '✈️', '🚗', '💻', '🎓', '💰', '💍', '🎸'];
+
+  // Load goal data when editing
+  useEffect(() => {
+    if (goal && visible) {
+      setGoalName(goal.name || '');
+      setTargetAmount(goal.targetAmount?.toString() || '');
+      setMonthlyContribution(goal.monthlyContribution?.toString() || '');
+      setSelectedIcon(goal.icon || '🎯');
+    } else if (!visible) {
+      // Reset when closing
+      setGoalName('');
+      setTargetAmount('');
+      setMonthlyContribution('');
+      setSelectedIcon('🎯');
+    }
+  }, [goal, visible]);
+
+  const handleSave = () => {
     if (!goalName || !targetAmount || !monthlyContribution) {
       return;
     }
@@ -40,18 +62,31 @@ export default function GoalModal({ visible, onClose }: GoalModalProps) {
 
     const periodMonths = Math.ceil(target / monthly);
 
-    const newGoal = {
-      id: Date.now().toString(),
-      name: goalName,
-      icon: '🎯', // Default icon, puede agregar selector después
-      targetAmount: target,
-      savedAmount: 0,
-      monthlyContribution: monthly,
-      periodMonths,
-      createdAt: new Date().toISOString(),
-    };
-
-    dispatch(addGoal(newGoal));
+    if (isEditing && goal) {
+      // Update existing goal
+      const updatedGoal: Goal = {
+        ...goal,
+        name: goalName,
+        icon: selectedIcon,
+        targetAmount: target,
+        monthlyContribution: monthly,
+        periodMonths,
+      };
+      dispatch(updateGoal(updatedGoal));
+    } else {
+      // Create new goal
+      const newGoal: Goal = {
+        id: Date.now().toString(),
+        name: goalName,
+        icon: selectedIcon,
+        targetAmount: target,
+        savedAmount: 0,
+        monthlyContribution: monthly,
+        periodMonths,
+        createdAt: new Date().toISOString(),
+      };
+      dispatch(addGoal(newGoal));
+    }
     handleClose();
   };
 
@@ -59,6 +94,7 @@ export default function GoalModal({ visible, onClose }: GoalModalProps) {
     setGoalName('');
     setTargetAmount('');
     setMonthlyContribution('');
+    setSelectedIcon('🎯');
     onClose();
   };
 
@@ -81,8 +117,30 @@ export default function GoalModal({ visible, onClose }: GoalModalProps) {
         
         <View style={[styles.modalContent, isDark ? styles.modalDark : styles.modalLight]}>
           <Text style={[styles.title, isDark ? styles.textWhite : styles.textDark]}>
-            Add New Goal
+            {isEditing ? 'Edit Goal' : 'Add New Goal'}
           </Text>
+
+          {/* Icon Selector */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
+              Select Icon
+            </Text>
+            <View style={styles.iconContainer}>
+              {icons.map((icon) => (
+                <TouchableOpacity
+                  key={icon}
+                  onPress={() => setSelectedIcon(icon)}
+                  style={[
+                    styles.iconButton,
+                    selectedIcon === icon && styles.iconButtonSelected,
+                    isDark ? styles.iconButtonDark : styles.iconButtonLight,
+                  ]}
+                >
+                  <Text style={styles.iconText}>{icon}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
           {/* Goal Name */}
           <View style={styles.inputGroup}>
@@ -153,12 +211,12 @@ export default function GoalModal({ visible, onClose }: GoalModalProps) {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={handleCreate}
+              onPress={handleSave}
               style={[styles.button, styles.createButton]}
               activeOpacity={0.8}
             >
               <Text style={[styles.buttonText, styles.createButtonText]}>
-                Create
+                {isEditing ? 'Save Changes' : 'Create Goal'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -263,5 +321,31 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     color: '#FFFFFF',
+  },
+  iconContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  iconButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  iconButtonDark: {
+    backgroundColor: '#0F172A',
+  },
+  iconButtonLight: {
+    backgroundColor: '#F9FAFB',
+  },
+  iconButtonSelected: {
+    borderColor: '#10B981',
+  },
+  iconText: {
+    fontSize: 24,
   },
 });
