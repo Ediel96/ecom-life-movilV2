@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { addLifestyleExpense, updateLifestyleExpense, deleteLifestyleExpense, LifestyleExpense } from '../store/slices/lifestyleSlice';
+import { useTranslation } from 'react-i18next';
 
 interface LifestyleModalProps {
   visible: boolean;
@@ -19,23 +20,24 @@ interface LifestyleModalProps {
 }
 
 const LIFESTYLE_CATEGORIES = [
-  { id: 'rent', icon: '🏠', label: 'Arriendo', color: '#3B82F6' },
-  { id: 'groceries', icon: '🛒', label: 'Mercado', color: '#10B981' },
-  { id: 'utilities', icon: '💡', label: 'Servicios', color: '#F59E0B' },
-  { id: 'water', icon: '💧', label: 'Agua', color: '#06B6D4' },
-  { id: 'internet', icon: '📡', label: 'Internet', color: '#8B5CF6' },
-  { id: 'phone', icon: '📱', label: 'Teléfono', color: '#EC4899' },
-  { id: 'transport', icon: '🚗', label: 'Transporte', color: '#EF4444' },
-  { id: 'subscription', icon: '📺', label: 'Suscripciones', color: '#6366F1' },
+  { id: 'rent', icon: '🏠', labelKey: 'lifestyle.categories.rent', color: '#3B82F6' },
+  { id: 'groceries', icon: '🛒', labelKey: 'lifestyle.categories.groceries', color: '#10B981' },
+  { id: 'utilities', icon: '💡', labelKey: 'lifestyle.categories.utilities', color: '#F59E0B' },
+  { id: 'water', icon: '💧', labelKey: 'lifestyle.categories.water', color: '#06B6D4' },
+  { id: 'internet', icon: '📡', labelKey: 'lifestyle.categories.internet', color: '#8B5CF6' },
+  { id: 'phone', icon: '📱', labelKey: 'lifestyle.categories.phone', color: '#EC4899' },
+  { id: 'transport', icon: '🚗', labelKey: 'lifestyle.categories.transport', color: '#EF4444' },
+  { id: 'subscription', icon: '📺', labelKey: 'lifestyle.categories.subscription', color: '#6366F1' },
 ];
 
 const FREQUENCIES = [
-  { id: 'monthly', label: 'Mensual' },
-  { id: 'weekly', label: 'Semanal' },
-  { id: 'yearly', label: 'Anual' },
+  { id: 'monthly', labelKey: 'lifestyle.frequency.monthly' },
+  { id: 'weekly', labelKey: 'lifestyle.frequency.weekly' },
+  { id: 'yearly', labelKey: 'lifestyle.frequency.yearly' },
 ];
 
 export default function LifestyleModal({ visible, onClose }: LifestyleModalProps) {
+  const { t } = useTranslation();
   const theme = useAppSelector((state) => state.theme.mode);
   const expenses = useAppSelector((state) => state.lifestyle.expenses);
   const transactions = useAppSelector((state) => state.transactions?.list || []);
@@ -51,13 +53,13 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
 
   const handleSave = () => {
     if (!name || !amount) {
-      Alert.alert('Error', 'Please fill all fields');
+      Alert.alert(t('common.error'), t('lifestyle.alerts.fillFields'));
       return;
     }
 
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      Alert.alert(t('common.error'), t('lifestyle.alerts.validAmount'));
       return;
     }
 
@@ -105,12 +107,12 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
 
   const handleDelete = (id: string) => {
     Alert.alert(
-      'Eliminar Gasto',
-      '¿Estás seguro de eliminar este gasto recurrente?',
+      t('lifestyle.alerts.deleteTitle'),
+      t('lifestyle.alerts.deleteMessage'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => dispatch(deleteLifestyleExpense(id)),
         },
@@ -126,7 +128,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
   }, 0);
 
   // Filtrar transacciones de estilo de vida
-  const lifestyleCategoryNames = LIFESTYLE_CATEGORIES.map(cat => cat.label.toLowerCase());
+  const lifestyleCategoryNames = LIFESTYLE_CATEGORIES.map(cat => t(cat.labelKey).toLowerCase());
   
   const lifestyleTransactions = transactions
     .filter(transaction => {
@@ -163,7 +165,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.title, isDark ? styles.textWhite : styles.textDark]}>
-              Configurar Estilo de Vida
+              {t('lifestyle.title')}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeText}>✕</Text>
@@ -174,7 +176,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
             {/* Total Monthly */}
             <View style={[styles.totalCard, isDark ? styles.totalCardDark : styles.totalCardLight]}>
               <Text style={[styles.totalLabel, isDark ? styles.textGray : styles.textGrayDark]}>
-                Total Mensual Estimado
+                {t('lifestyle.totalMonthly')}
               </Text>
               <Text style={[styles.totalAmount, styles.textGreen]}>
                 ${totalMonthly.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -183,7 +185,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
 
             {/* Category Selector */}
             <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
-              Categoría
+              {t('common.category')}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {LIFESTYLE_CATEGORIES.map((category) => (
@@ -198,7 +200,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
                 >
                   <Text style={styles.categoryIcon}>{category.icon}</Text>
                   <Text style={[styles.categoryLabel, isDark ? styles.textWhite : styles.textDark]}>
-                    {category.label}
+                    {t(category.labelKey)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -206,11 +208,11 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
 
             {/* Name */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>Nombre</Text>
+              <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>{t('common.name')}</Text>
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder={`ej: ${selectedCategory.label}`}
+                placeholder={t('lifestyle.placeholders.name', { category: t(selectedCategory.labelKey) })}
                 placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                 style={[styles.input, isDark ? styles.inputDark : styles.inputLight, isDark ? styles.textWhite : styles.textDark]}
               />
@@ -218,11 +220,11 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
 
             {/* Amount */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>Monto (COP)</Text>
+              <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>{t('common.amount')} {t('lifestyle.currency')}</Text>
               <TextInput
                 value={amount}
                 onChangeText={setAmount}
-                placeholder="0"
+                placeholder={t('lifestyle.placeholders.amount')}
                 placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
                 keyboardType="numeric"
                 style={[styles.input, isDark ? styles.inputDark : styles.inputLight, isDark ? styles.textWhite : styles.textDark]}
@@ -231,7 +233,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
 
             {/* Frequency */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>Frecuencia</Text>
+              <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>{t('lifestyle.frequency.label')}</Text>
               <View style={styles.frequencyContainer}>
                 {FREQUENCIES.map((freq) => (
                   <TouchableOpacity
@@ -249,7 +251,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
                         frequency === freq.id ? styles.frequencyTextActive : (isDark ? styles.textGray : styles.textGrayDark),
                       ]}
                     >
-                      {freq.label}
+                      {t(freq.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -259,7 +261,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
             {/* Save Button */}
             <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
               <Text style={styles.saveButtonText}>
-                {editingExpense ? 'Actualizar' : 'Agregar Gasto'}
+                {editingExpense ? t('lifestyle.updateExpense') : t('lifestyle.addExpense')}
               </Text>
             </TouchableOpacity>
 
@@ -267,7 +269,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
             {expenses.length > 0 && (
               <View style={styles.expensesList}>
                 <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
-                  Gastos Recurrentes
+                  {t('lifestyle.recurringExpenses')}
                 </Text>
                 {expenses.map((expense) => (
                   <View
@@ -281,7 +283,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
                           {expense.name}
                         </Text>
                         <Text style={[styles.expenseFrequency, isDark ? styles.textGray : styles.textGrayDark]}>
-                          {expense.frequency === 'monthly' ? 'Mensual' : expense.frequency === 'weekly' ? 'Semanal' : 'Anual'}
+                          {t(`lifestyle.frequency.${expense.frequency}`)}
                         </Text>
                       </View>
                       <Text style={[styles.expenseAmount, styles.textGreen]}>
@@ -306,7 +308,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
               <View style={styles.transactionsList}>
                 <View style={styles.transactionsHeader}>
                   <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
-                    Transacciones de Estilo de Vida
+                    {t('lifestyle.lifestyleTransactions')}
                   </Text>
                   <View style={[styles.totalBadge, isDark ? styles.totalBadgeDark : styles.totalBadgeLight]}>
                     <Text style={[styles.totalBadgeText, styles.textRed]}>
@@ -337,13 +339,14 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
                         )}
                       </View>
                       <Text style={[styles.transactionAmount, styles.textRed]}>
-                        -${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        -${Math.abs(transaction.amount).toLocaleString('en-US')}
                       </Text>
                     </View>
                   </View>
                 ))}
               </View>
             )}
+
           </ScrollView>
         </View>
       </View>

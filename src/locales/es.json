@@ -1,0 +1,133 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar",
+    "close": "Cerrar",
+    "total": "Total",
+    "amount": "Monto",
+    "name": "Nombre",
+    "description": "Descripción",
+    "date": "Fecha",
+    "category": "Categoría",
+    "categories": "Categorías"
+  },
+  "dashboard": {
+    "title": "OrganizeLife",
+    "expenses": "Gastos",
+    "income": "Ingresos",
+    "normalTransactions": "Transacciones Normales",
+    "lifestyleTransactions": "Estilo de Vida",
+    "recentTransactions": "Transacciones Recientes",
+    "lifestyleTitle": "Transacciones de Estilo de Vida",
+    "period": {
+      "day": "Día",
+      "week": "Semana",
+      "month": "Mes",
+      "year": "Año"
+    },
+    "swipeHints": {
+      "toLifestyle": "← Desliza para ver gastos de estilo de vida",
+      "toAll": "Desliza → para ver todas las transacciones"
+    },
+    "empty": {
+      "noTransactions": "No hay transacciones normales",
+      "noLifestyle": "No hay gastos de estilo de vida"
+    },
+    "transaction": "transacción",
+    "transactions": "transacciones"
+  },
+  "lifestyle": {
+    "title": "Configurar Estilo de Vida",
+    "subtitle": "Gestiona tus gastos recurrentes",
+    "totalMonthly": "Total Mensual Estimado",
+    "addExpense": "Agregar Gasto",
+    "updateExpense": "Actualizar",
+    "recurringExpenses": "Gastos Recurrentes",
+    "lifestyleTransactions": "Transacciones de Estilo de Vida",
+    "frequency": {
+      "label": "Frecuencia",
+      "monthly": "Mensual",
+      "weekly": "Semanal",
+      "yearly": "Anual"
+    },
+    "categories": {
+      "rent": "Arriendo",
+      "groceries": "Mercado",
+      "utilities": "Servicios",
+      "water": "Agua",
+      "internet": "Internet",
+      "phone": "Teléfono",
+      "transport": "Transporte",
+      "subscription": "Suscripciones"
+    },
+    "placeholders": {
+      "amount": "0",
+      "name": "ej: {{category}}"
+    },
+    "currency": "(COP)",
+    "addCategories": "+ Agregar Categorías",
+    "alerts": {
+      "deleteTitle": "Eliminar Gasto",
+      "deleteMessage": "¿Estás seguro de eliminar este gasto recurrente?",
+      "fillFields": "Por favor llena todos los campos",
+      "validAmount": "Por favor ingresa un monto válido"
+    }
+  },
+  "transactions": {
+    "modal": {
+      "title": "Nueva Transacción",
+      "editTitle": "Editar Transacción",
+      "selectCategory": "Seleccionar Categoría",
+      "selectAccount": "Seleccionar Cuenta"
+    },
+    "alerts": {
+      "deleteTitle": "Eliminar Transacción",
+      "deleteMessage": "¿Estás seguro de eliminar esta transacción? Esta acción no se puede deshacer."
+    }
+  },
+  "accounts": {
+    "title": "Cuentas",
+    "addAccount": "Agregar Cuenta",
+    "editAccount": "Editar Cuenta",
+    "balance": "Saldo",
+    "types": {
+      "checking": "Corriente",
+      "savings": "Ahorros",
+      "credit": "Crédito",
+      "cash": "Efectivo"
+    },
+    "alerts": {
+      "deleteTitle": "Eliminar Cuenta",
+      "deleteMessage": "¿Estás seguro de eliminar esta cuenta?"
+    }
+  },
+  "goals": {
+    "title": "Metas de Ahorro",
+    "subtitle": "Establece y sigue el progreso de tus metas financieras",
+    "addGoal": "Agregar Meta",
+    "editGoal": "Editar Meta",
+    "addMoney": "Agregar Dinero",
+    "targetAmount": "Monto Objetivo",
+    "savedAmount": "Monto Ahorrado",
+    "progress": "Progreso",
+    "alerts": {
+      "deleteTitle": "Eliminar Meta",
+      "deleteMessage": "¿Estás seguro de eliminar esta meta?",
+      "addMoneyTitle": "Agregar Dinero",
+      "addMoneyMessage": "¿Cuánto dinero quieres agregar?",
+      "validAmount": "Por favor ingresa un monto válido"
+    }
+  },
+  "settings": {
+    "title": "Configuración",
+    "language": "Idioma",
+    "theme": "Tema",
+    "currency": "Moneda",
+    "notifications": "Notificaciones"
+  }
+}

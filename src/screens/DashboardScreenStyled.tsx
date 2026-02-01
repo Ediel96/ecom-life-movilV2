@@ -8,15 +8,18 @@ import TransactionModal from '../components/TransactionModalStyled';
 import LifestyleModal from '../components/LifestyleModal';
 import { Category } from '../types';
 import { fetchTransactions, deleteTransactionThunk } from '../store/slices/transactionsSlice';
+import { useTranslation } from 'react-i18next';
 
 interface CategoryWithTotal extends Category {
   total: number;
 }
 
 export default function DashboardScreen() {
+  const { t } = useTranslation();
   const theme = useAppSelector((state) => state.theme.mode);
   const categories = useAppSelector((state) => state.categories?.list ?? []);
   const transactionsRaw = useAppSelector((state) => state.transactions?.list);
+  const expenses = useAppSelector((state) => state.lifestyle.expenses);
   const [modalVisible, setModalVisible] = useState(false);
   const [lifestyleModalVisible, setLifestyleModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
@@ -26,7 +29,7 @@ export default function DashboardScreen() {
   const chartScrollRef = useRef<ScrollView>(null);
 
   const isDark = theme === 'dark';
-  const screenWidth = Dimensions.get('window').width - 32 - 48; // Restar padding del scrollContent (32) + padding del card (48)
+  const screenWidth = Dimensions.get('window').width - 32 - 48;
 
   const dispatch = useAppDispatch();
 
@@ -47,12 +50,12 @@ export default function DashboardScreen() {
 
   const handleDeleteTransaction = (transaction: any) => {
     Alert.alert(
-      'Delete Transaction',
-      'Are you sure you want to delete this transaction? This action cannot be undone.',
+      t('transactions.alerts.deleteTitle'),
+      t('transactions.alerts.deleteMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => dispatch(deleteTransactionThunk(transaction.id)),
         },
@@ -73,7 +76,7 @@ export default function DashboardScreen() {
         activeOpacity={0.8}
       >
         <Text style={styles.actionIcon}>✏️</Text>
-        <Text style={styles.actionText}>Edit</Text>
+        <Text style={styles.actionText}>{t('common.edit')}</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.actionButton, styles.deleteButton]}
@@ -81,7 +84,7 @@ export default function DashboardScreen() {
         activeOpacity={0.8}
       >
         <Text style={styles.actionIcon}>🗑️</Text>
-        <Text style={styles.actionText}>Delete</Text>
+        <Text style={styles.actionText}>{t('common.delete')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -150,8 +153,10 @@ export default function DashboardScreen() {
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Header */}
           <Text style={[styles.header, isDark ? styles.textWhite : styles.textDark]}>
-            OrganizeLife
+            {t('dashboard.title')}
           </Text>
+
+          
 
           {/* Tabs */}
           <View style={styles.tabsContainer}>
@@ -160,7 +165,7 @@ export default function DashboardScreen() {
               style={[styles.tab, selectedTab === 'expenses' && styles.tabActive]}
             >
               <Text style={[styles.tabText, selectedTab === 'expenses' ? styles.tabTextActive : (isDark ? styles.textGray : styles.textGrayDark)]}>
-                Expenses
+                {t('dashboard.expenses')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -168,7 +173,7 @@ export default function DashboardScreen() {
               style={[styles.tab, selectedTab === 'income' && styles.tabActive]}
             >
               <Text style={[styles.tabText, selectedTab === 'income' ? styles.tabTextActive : (isDark ? styles.textGray : styles.textGrayDark)]}>
-                Income
+                {t('dashboard.income')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -189,7 +194,7 @@ export default function DashboardScreen() {
                 <Text
                   style={selectedPeriod === period ? styles.periodTextActive : (isDark ? styles.textGray : styles.textGrayDark)}
                 >
-                  {period}
+                  {t(`dashboard.period.${period}`)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -206,10 +211,10 @@ export default function DashboardScreen() {
               </View>
               <View style={styles.lifestyleTextContainer}>
                 <Text style={[styles.lifestyleButtonTitle, isDark ? styles.textWhite : styles.textDark]}>
-                  Configurar Estilo de Vida
+                  {t('lifestyle.title')}
                 </Text>
                 <Text style={[styles.lifestyleButtonSubtitle, isDark ? styles.textGray : styles.textGrayDark]}>
-                  Gestiona tus gastos recurrentes
+                  {t('lifestyle.subtitle')}
                 </Text>
               </View>
               <Text style={[styles.lifestyleArrow, isDark ? styles.textGray : styles.textGrayDark]}>
@@ -217,6 +222,49 @@ export default function DashboardScreen() {
               </Text>
             </View>
           </TouchableOpacity>
+
+          {/* Lifestyle Recurring Expenses */}
+          {expenses.length > 0 && (
+            <View style={[styles.card, isDark ? styles.cardDark : styles.cardLight]}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
+                  {t('lifestyle.recurringExpenses')}
+                </Text>
+                <View style={[styles.countBadge, isDark ? styles.countBadgeDark : styles.countBadgeLight]}>
+                  <Text style={[styles.countBadgeText, isDark ? styles.textWhite : styles.textDark]}>
+                    {expenses.length}
+                  </Text>
+                </View>
+              </View>
+              {expenses.map((expense) => (
+                <View
+                  key={expense.id}
+                  style={[styles.expenseCard, isDark ? styles.expenseCardDark : styles.expenseCardLight]}
+                >
+                  <View style={styles.expenseContent}>
+                    <Text style={styles.expenseIcon}>{expense.icon}</Text>
+                    <View style={styles.expenseInfo}>
+                      <Text style={[styles.expenseName, isDark ? styles.textWhite : styles.textDark]}>
+                        {expense.name}
+                      </Text>
+                      <Text style={[styles.expenseFrequency, isDark ? styles.textGray : styles.textGrayDark]}>
+                        {t(`lifestyle.frequency.${expense.frequency}`)}
+                      </Text>
+                    </View>
+                    <Text style={[styles.expenseAmount, styles.textGreen]}>
+                      ${expense.amount.toLocaleString('en-US')}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              <TouchableOpacity 
+                onPress={() => setLifestyleModalVisible(true)}
+                style={styles.editLifestyleButton}
+              >
+                <Text style={styles.editLifestyleButtonText}>✏️ {t('common.edit')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Expenses Overview Card */}
           <View style={[styles.card, isDark ? styles.cardDark : styles.cardLight]}>
@@ -244,10 +292,10 @@ export default function DashboardScreen() {
               <View style={[styles.chartPage, { width: screenWidth }]}>
                 <View style={styles.chartHeaderCenter}>
                   <Text style={[styles.cardTitle, isDark ? styles.textWhite : styles.textDark]}>
-                    💰 Transacciones Normales
+                    💰 {t('dashboard.normalTransactions')}
                   </Text>
                   <Text style={[styles.cardSubtitle, isDark ? styles.textGray : styles.textGrayDark]}>
-                    {selectedPeriod === 'day' ? 'Día' : selectedPeriod === 'week' ? 'Semana' : selectedPeriod === 'month' ? 'Mes' : 'Año'} • {normalTransactions.length} transaccion{normalTransactions.length === 1 ? '' : 'es'}
+                    {t(`dashboard.period.${selectedPeriod}`)} • {normalTransactions.length} {normalTransactions.length === 1 ? t('dashboard.transaction') : t('dashboard.transactions')}
                   </Text>
                 </View>
 
@@ -272,7 +320,7 @@ export default function DashboardScreen() {
                             ${totalNormalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                           </Text>
                           <Text style={[styles.centerLabelSubtext, isDark ? styles.textGray : styles.textGrayDark]}>
-                            {pieData.length} categoría{pieData.length === 1 ? '' : 's'}
+                            {pieData.length} {pieData.length === 1 ? t('common.category') : t('common.categories')}
                           </Text>
                         </View>
                       )}
@@ -281,13 +329,13 @@ export default function DashboardScreen() {
                 ) : (
                   <View style={styles.emptyContainer}>
                     <Text style={[styles.emptyText, isDark ? styles.textGray : styles.textGrayDark]}>
-                      No hay transacciones normales
+                      {t('dashboard.empty.noTransactions')}
                     </Text>
                   </View>
                 )}
 
                 <Text style={[styles.swipeHint, isDark ? styles.textGray : styles.textGrayDark]}>
-                  ← Desliza para ver gastos de estilo de vida
+                  {t('dashboard.swipeHints.toLifestyle')}
                 </Text>
               </View>
 
@@ -295,10 +343,10 @@ export default function DashboardScreen() {
               <View style={[styles.chartPage, { width: screenWidth }]}>
                 <View style={styles.chartHeaderCenter}>
                   <Text style={[styles.cardTitle, isDark ? styles.textWhite : styles.textDark]}>
-                    🏠 Estilo de Vida
+                    🏠 {t('dashboard.lifestyleTransactions')}
                   </Text>
                   <Text style={[styles.cardSubtitle, isDark ? styles.textGray : styles.textGrayDark]}>
-                    {selectedPeriod === 'day' ? 'Día' : selectedPeriod === 'week' ? 'Semana' : selectedPeriod === 'month' ? 'Mes' : 'Año'} • {lifestyleTransactions.length} transaccion{lifestyleTransactions.length === 1 ? '' : 'es'}
+                    {t(`dashboard.period.${selectedPeriod}`)} • {lifestyleTransactions.length} {lifestyleTransactions.length === 1 ? t('dashboard.transaction') : t('dashboard.transactions')}
                   </Text>
                 </View>
 
@@ -332,19 +380,19 @@ export default function DashboardScreen() {
                 ) : (
                   <View style={styles.emptyContainer}>
                     <Text style={[styles.emptyText, isDark ? styles.textGray : styles.textGrayDark]}>
-                      No hay gastos de estilo de vida
+                      {t('dashboard.empty.noLifestyle')}
                     </Text>
                     <TouchableOpacity 
                       onPress={() => setLifestyleModalVisible(true)}
                       style={styles.emptyButton}
                     >
-                      <Text style={styles.emptyButtonText}>+ Agregar Categorías</Text>
+                      <Text style={styles.emptyButtonText}>{t('lifestyle.addCategories')}</Text>
                     </TouchableOpacity>
                   </View>
                 )}
 
                 <Text style={[styles.swipeHint, isDark ? styles.textGray : styles.textGrayDark]}>
-                  Desliza → para ver todas las transacciones
+                  {t('dashboard.swipeHints.toAll')}
                 </Text>
               </View>
             </ScrollView>
@@ -355,7 +403,7 @@ export default function DashboardScreen() {
             <View style={styles.transactionsSection}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
-                  🏠 Transacciones de Estilo de Vida
+                  🏠 {t('dashboard.lifestyleTitle')}
                 </Text>
                 <View style={[styles.countBadge, isDark ? styles.countBadgeDark : styles.countBadgeLight]}>
                   <Text style={[styles.countBadgeText, isDark ? styles.textWhite : styles.textDark]}>
@@ -407,7 +455,7 @@ export default function DashboardScreen() {
             <View style={styles.transactionsSection}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
-                  Transacciones Recientes
+                  {t('dashboard.recentTransactions')}
                 </Text>
                 <View style={[styles.countBadge, isDark ? styles.countBadgeDark : styles.countBadgeLight]}>
                   <Text style={[styles.countBadgeText, isDark ? styles.textWhite : styles.textDark]}>
@@ -832,5 +880,57 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  expenseCard: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  expenseCardDark: {
+    backgroundColor: '#0F172A',
+  },
+  expenseCardLight: {
+    backgroundColor: '#F3F4F6',
+  },
+  expenseContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  expenseIcon: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  expenseInfo: {
+    flex: 1,
+  },
+  expenseName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  expenseFrequency: {
+    fontSize: 12,
+  },
+  expenseAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
+  editLifestyleButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  editLifestyleButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

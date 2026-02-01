@@ -12,6 +12,7 @@ import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { addTransactionLocal, updateTransactionThunk } from '../store/slices/transactionsSlice';
 import { fetchAccounts } from '../store/slices/accountsSilce';
 import { Transaction } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface TransactionModalProps {
   visible: boolean;
@@ -27,6 +28,7 @@ const ACCOUNT_TYPES = [
 ];
 
 export default function TransactionModal({ visible, onClose, transaction }: TransactionModalProps) {
+  const { t } = useTranslation();
   const theme = useAppSelector((state) => state.theme.mode);
   const categories = useAppSelector((state) => state.categories.list);
   const accounts = useAppSelector((state) => state.accounts.list);
@@ -141,7 +143,7 @@ export default function TransactionModal({ visible, onClose, transaction }: Tran
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.title, isDark ? styles.textWhite : styles.textDark]}>
-              {isEditing ? 'Edit Transaction' : 'New Transaction'}
+              {isEditing ? t('transactions.modal.editTitle') : t('transactions.modal.title')}
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeText}>✕</Text>
@@ -166,7 +168,7 @@ export default function TransactionModal({ visible, onClose, transaction }: Tran
                     transactionType === 'expense' ? styles.toggleTextActive : (isDark ? styles.textGray : styles.textGrayDark)
                   ]}
                 >
-                  Expense
+                  {t('dashboard.expenses')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -184,7 +186,7 @@ export default function TransactionModal({ visible, onClose, transaction }: Tran
                     transactionType === 'income' ? styles.toggleTextActive : (isDark ? styles.textGray : styles.textGrayDark)
                   ]}
                 >
-                  Income
+                  {t('dashboard.income')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -192,7 +194,7 @@ export default function TransactionModal({ visible, onClose, transaction }: Tran
             {/* Description Input */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
-                Description
+                {t('common.description')}
               </Text>
               <TextInput
                 value={description}
@@ -206,7 +208,7 @@ export default function TransactionModal({ visible, onClose, transaction }: Tran
             {/* Amount Input */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
-                Amount
+                {t('common.amount')}
               </Text>
               <TextInput
                 value={amount}
@@ -221,7 +223,7 @@ export default function TransactionModal({ visible, onClose, transaction }: Tran
             {/* Category Selection */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
-                Category
+                {t('common.category')}
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
                 {filteredCategories.map((category) => (
@@ -248,7 +250,7 @@ export default function TransactionModal({ visible, onClose, transaction }: Tran
             {/* Account Selection */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, isDark ? styles.textWhite : styles.textDark]}>
-                Account
+                {t('transactions.modal.selectAccount')}
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountScroll}>
                 {accounts.map((account) => {
@@ -286,12 +288,12 @@ export default function TransactionModal({ visible, onClose, transaction }: Tran
               style={[styles.button, styles.buttonCancel, isDark ? styles.buttonCancelDark : styles.buttonCancelLight]}
             >
               <Text style={[styles.buttonText, isDark ? styles.textWhite : styles.textDark]}>
-                Cancel
+                {t('common.cancel')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleSave} style={[styles.button, styles.buttonSave]}>
               <Text style={[styles.buttonText, styles.buttonTextSave]}>
-                {isEditing ? 'Save Changes' : 'Save'}
+                {isEditing ? t('common.save') : t('common.save')}
               </Text>
             </TouchableOpacity>
           </View>

@@ -4,8 +4,10 @@ import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { deleteGoal, updateGoal, updateGoalProgress } from '../store/slices/goalsSlice';
 import GoalModal from '../components/GoalModal';
+import { useTranslation } from 'react-i18next';
 
 export default function GoalsScreen() {
+  const { t } = useTranslation();
   const theme = useAppSelector((state) => state.theme.mode);
   const goals = useAppSelector((state) => state.goals.list);
   const dispatch = useAppDispatch();
@@ -32,12 +34,12 @@ export default function GoalsScreen() {
 
   const handleDeleteGoal = (goal: any) => {
     Alert.alert(
-      'Delete Goal',
-      `Are you sure you want to delete "${goal.name}"? This action cannot be undone.`,
+      t('goals.alerts.deleteTitle'),
+      t('goals.alerts.deleteMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => dispatch(deleteGoal(goal.id)),
         },
@@ -60,7 +62,7 @@ export default function GoalsScreen() {
 
     const amount = parseFloat(amountToAdd);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      Alert.alert(t('common.error'), t('goals.alerts.validAmount'));
       return;
     }
 
@@ -91,7 +93,7 @@ export default function GoalsScreen() {
         activeOpacity={0.8}
       >
         <Text style={styles.actionIconSwipe}>✏️</Text>
-        <Text style={styles.actionTextSwipe}>Edit</Text>
+        <Text style={styles.actionTextSwipe}>{t('common.edit')}</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.actionButtonSwipe, styles.deleteButton]}
@@ -99,7 +101,7 @@ export default function GoalsScreen() {
         activeOpacity={0.8}
       >
         <Text style={styles.actionIconSwipe}>🗑️</Text>
-        <Text style={styles.actionTextSwipe}>Delete</Text>
+        <Text style={styles.actionTextSwipe}>{t('common.delete')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -110,10 +112,10 @@ export default function GoalsScreen() {
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <Text style={[styles.header, isDark ? styles.textWhite : styles.textDark]}>
-          Financial Goals
+          {t('goals.title')}
         </Text>
         <Text style={[styles.subtitle, isDark ? styles.textGray : styles.textGrayDark]}>
-          Set and track your financial goals
+          {t('goals.subtitle')}
         </Text>
 
         {/* Monthly Overview Card */}

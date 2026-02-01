@@ -1,0 +1,133 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "close": "Close",
+    "total": "Total",
+    "amount": "Amount",
+    "name": "Name",
+    "description": "Description",
+    "date": "Date",
+    "category": "Category",
+    "categories": "Categories"
+  },
+  "dashboard": {
+    "title": "OrganizeLife",
+    "expenses": "Expenses",
+    "income": "Income",
+    "normalTransactions": "Normal Transactions",
+    "lifestyleTransactions": "Lifestyle",
+    "recentTransactions": "Recent Transactions",
+    "lifestyleTitle": "Lifestyle Transactions",
+    "period": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "year": "Year"
+    },
+    "swipeHints": {
+      "toLifestyle": "← Swipe to see lifestyle expenses",
+      "toAll": "Swipe → to see all transactions"
+    },
+    "empty": {
+      "noTransactions": "No normal transactions",
+      "noLifestyle": "No lifestyle expenses"
+    },
+    "transaction": "transaction",
+    "transactions": "transactions"
+  },
+  "lifestyle": {
+    "title": "Configure Lifestyle",
+    "subtitle": "Manage your recurring expenses",
+    "totalMonthly": "Estimated Monthly Total",
+    "addExpense": "Add Expense",
+    "updateExpense": "Update",
+    "recurringExpenses": "Recurring Expenses",
+    "lifestyleTransactions": "Lifestyle Transactions",
+    "frequency": {
+      "label": "Frequency",
+      "monthly": "Monthly",
+      "weekly": "Weekly",
+      "yearly": "Yearly"
+    },
+    "categories": {
+      "rent": "Rent",
+      "groceries": "Groceries",
+      "utilities": "Utilities",
+      "water": "Water",
+      "internet": "Internet",
+      "phone": "Phone",
+      "transport": "Transport",
+      "subscription": "Subscriptions"
+    },
+    "placeholders": {
+      "amount": "0",
+      "name": "e.g: {{category}}"
+    },
+    "currency": "(COP)",
+    "addCategories": "+ Add Categories",
+    "alerts": {
+      "deleteTitle": "Delete Expense",
+      "deleteMessage": "Are you sure you want to delete this recurring expense?",
+      "fillFields": "Please fill all fields",
+      "validAmount": "Please enter a valid amount"
+    }
+  },
+  "transactions": {
+    "modal": {
+      "title": "New Transaction",
+      "editTitle": "Edit Transaction",
+      "selectCategory": "Select Category",
+      "selectAccount": "Select Account"
+    },
+    "alerts": {
+      "deleteTitle": "Delete Transaction",
+      "deleteMessage": "Are you sure you want to delete this transaction? This action cannot be undone."
+    }
+  },
+  "accounts": {
+    "title": "Accounts",
+    "addAccount": "Add Account",
+    "editAccount": "Edit Account",
+    "balance": "Balance",
+    "types": {
+      "checking": "Checking",
+      "savings": "Savings",
+      "credit": "Credit",
+      "cash": "Cash"
+    },
+    "alerts": {
+      "deleteTitle": "Delete Account",
+      "deleteMessage": "Are you sure you want to delete this account?"
+    }
+  },
+  "goals": {
+    "title": "Savings Goals",
+    "subtitle": "Set and track your financial goals",
+    "addGoal": "Add Goal",
+    "editGoal": "Edit Goal",
+    "addMoney": "Add Money",
+    "targetAmount": "Target Amount",
+    "savedAmount": "Saved Amount",
+    "progress": "Progress",
+    "alerts": {
+      "deleteTitle": "Delete Goal",
+      "deleteMessage": "Are you sure you want to delete this goal?",
+      "addMoneyTitle": "Add Money",
+      "addMoneyMessage": "How much money do you want to add?",
+      "validAmount": "Please enter a valid amount"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "currency": "Currency",
+    "notifications": "Notifications"
+  }
+}

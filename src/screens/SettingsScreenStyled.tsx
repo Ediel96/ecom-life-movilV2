@@ -3,8 +3,11 @@ import { View, Text, ScrollView, TouchableOpacity, Switch, StyleSheet } from 're
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { toggleTheme } from '../store/slices/themeSlice';
 import { logout } from '../store/slices/authSlice';
+import { LanguageSelector } from '../components/LanguageSelector';
+import { useTranslation } from 'react-i18next';
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const theme = useAppSelector((state) => state.theme.mode);
   const dispatch = useAppDispatch();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -24,8 +27,11 @@ export default function SettingsScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <Text style={[styles.header, isDark ? styles.textWhite : styles.textDark]}>
-          Settings
+          {t('settings.title')}
         </Text>
+
+        {/* Language Selector */}
+        <LanguageSelector />
 
         {/* Account Section */}
         <View style={styles.section}>
