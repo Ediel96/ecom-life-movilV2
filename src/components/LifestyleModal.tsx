@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { format, parseISO } from 'date-fns';
 import {
   View,
   Text,
@@ -37,6 +38,8 @@ const FREQUENCIES = [
 export default function LifestyleModal({ visible, onClose }: LifestyleModalProps) {
   const theme = useAppSelector((state) => state.theme.mode);
   const expenses = useAppSelector((state) => state.lifestyle.expenses);
+  const transactions = useAppSelector((state) => state.transactions?.list || []);
+  const categories = useAppSelector((state) => state.categories?.list || []);
   const dispatch = useAppDispatch();
   const isDark = theme === 'dark';
 
@@ -121,6 +124,37 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
     if (expense.frequency === 'yearly') return sum + (expense.amount / 12);
     return sum;
   }, 0);
+
+  // Filtrar transacciones de estilo de vida
+  const lifestyleCategoryNames = LIFESTYLE_CATEGORIES.map(cat => cat.label.toLowerCase());
+  
+  const lifestyleTransactions = transactions
+    .filter(transaction => {
+      const category = categories.find(c => c.id === transaction.category_id);
+      if (!category) return false;
+      const categoryName = category.name.toLowerCase();
+      return lifestyleCategoryNames.some(lifestyle => 
+        categoryName.includes(lifestyle) || 
+        categoryName === 'arriendo' || 
+        categoryName === 'mercado' ||
+        categoryName === 'servicios' ||
+        categoryName === 'agua' ||
+        categoryName === 'internet' ||
+        categoryName === 'teléfono' ||
+        categoryName === 'telefono' ||
+        categoryName === 'transporte' ||
+        categoryName === 'suscripciones' ||
+        categoryName === 'suscripción'
+      );
+    })
+    .map(t => ({
+      ...t,
+      category: categories.find(c => c.id === t.category_id),
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 10); // Últimas 10 transacciones
+
+  const totalLifestyleTransactions = lifestyleTransactions.reduce((sum, t) => sum + t.amount, 0);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -261,6 +295,50 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
                       <TouchableOpacity onPress={() => handleDelete(expense.id)} style={styles.actionBtn}>
                         <Text style={styles.actionText}>🗑️</Text>
                       </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Lifestyle Transactions */}
+            {lifestyleTransactions.length > 0 && (
+              <View style={styles.transactionsList}>
+                <View style={styles.transactionsHeader}>
+                  <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
+                    Transacciones de Estilo de Vida
+                  </Text>
+                  <View style={[styles.totalBadge, isDark ? styles.totalBadgeDark : styles.totalBadgeLight]}>
+                    <Text style={[styles.totalBadgeText, styles.textRed]}>
+                      ${totalLifestyleTransactions.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </Text>
+                  </View>
+                </View>
+                {lifestyleTransactions.map((transaction) => (
+                  <View
+                    key={transaction.id}
+                    style={[styles.transactionCard, isDark ? styles.transactionCardDark : styles.transactionCardLight]}
+                  >
+                    <View style={styles.transactionContent}>
+                      <View style={[styles.transactionIconContainer, { backgroundColor: transaction.category?.color_fill || '#10B981' }]}>
+                        <Text style={styles.transactionIcon}>{transaction.category?.icon || '💰'}</Text>
+                      </View>
+                      <View style={styles.transactionInfo}>
+                        <Text style={[styles.transactionName, isDark ? styles.textWhite : styles.textDark]}>
+                          {transaction.category?.name || 'Desconocido'}
+                        </Text>
+                        <Text style={[styles.transactionDate, isDark ? styles.textGray : styles.textGrayDark]}>
+                          {transaction.date ? format(parseISO(transaction.date), 'dd MMM yyyy, HH:mm') : ''}
+                        </Text>
+                        {transaction.description && (
+                          <Text style={[styles.transactionDescription, isDark ? styles.textGray : styles.textGrayDark]}>
+                            {transaction.description}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={[styles.transactionAmount, styles.textRed]}>
+                        -${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </Text>
                     </View>
                   </View>
                 ))}
@@ -479,5 +557,78 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 20,
+  },
+  transactionsList: {
+    marginTop: 24,
+  },
+  transactionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  totalBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  totalBadgeDark: {
+    backgroundColor: '#0F172A',
+  },
+  totalBadgeLight: {
+    backgroundColor: '#FEE2E2',
+  },
+  totalBadgeText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  textRed: {
+    color: '#EF4444',
+  },
+  transactionCard: {
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  },
+  transactionCardDark: {
+    backgroundColor: '#0F172A',
+  },
+  transactionCardLight: {
+    backgroundColor: '#F9FAFB',
+  },
+  transactionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transactionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  transactionIcon: {
+    fontSize: 22,
+  },
+  transactionInfo: {
+    flex: 1,
+  },
+  transactionName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  transactionDate: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  transactionDescription: {
+    fontSize: 11,
+    fontStyle: 'italic',
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
