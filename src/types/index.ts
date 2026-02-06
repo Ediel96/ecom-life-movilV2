@@ -10,6 +10,25 @@ export interface Category {
   updated_at: string;
 }
 
+export type FrequencyType =
+  | 'monthly'
+  | 'weekly'
+  | 'yearly'
+  | 'day'
+  | 'week'
+  | 'month'
+  | 'year'
+  | 'weekend'
+  | 'none'
+  | 'custom'
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday';
+
 export interface Transaction {
   id: number;
   account_id: number;
@@ -21,9 +40,10 @@ export interface Transaction {
   date: string;
   created_at: string;
   updated_at: string;
-  // Campo opcional para gastos recurrentes de estilo de vida
-  frequency?: 'monthly' | 'weekly' | 'yearly';
-  isRecurring?: boolean;
+  notification: boolean;
+  notification_date: string | null;
+  frequency: FrequencyType;
+  lifestyle: boolean;
 }
 
 export interface User {

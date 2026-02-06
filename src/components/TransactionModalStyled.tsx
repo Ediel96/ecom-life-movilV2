@@ -119,6 +119,10 @@ export default function TransactionModal({ visible, onClose, transaction }: Tran
           transaction_type: transactionType,
           created_at: now,
           updated_at: now,
+          notification: false,
+          notification_date: null,
+          frequency: 'none',
+          lifestyle: false,
         })
       );
     }

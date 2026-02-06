@@ -19,8 +19,6 @@ export default function DashboardScreen() {
   const theme = useAppSelector((state) => state.theme.mode);
   const categories = useAppSelector((state) => state.categories?.list ?? []);
   const transactionsRaw = useAppSelector((state) => state.transactions?.list);
-  const recurringIds = useAppSelector((state) => state.lifestyle?.recurringTransactionIds || []);
-  const frequencyConfig = useAppSelector((state) => state.lifestyle?.frequencyConfig || {});
   const [modalVisible, setModalVisible] = useState(false);
   const [lifestyleModalVisible, setLifestyleModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
@@ -44,17 +42,16 @@ export default function DashboardScreen() {
     return transactionsRaw;
   }, [transactionsRaw]);
 
-  // Obtener transacciones recurrentes (gastos de estilo de vida)
+  // Obtener transacciones de estilo de vida (lifestyle === true desde la API)
   const recurringExpenses = useMemo(() => {
     return transactions
-      .filter(t => recurringIds.includes(t.id))
+      .filter(t => t.lifestyle === true)
       .map(t => ({
         ...t,
         category: categories.find(c => c.id === t.category_id),
-        frequency: frequencyConfig[t.id]?.frequency || 'monthly',
       }))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, recurringIds, frequencyConfig, categories]);
+  }, [transactions, categories]);
 
   const handleEditTransaction = (transaction: any) => {
     setSelectedTransaction(transaction);
@@ -102,23 +99,13 @@ export default function DashboardScreen() {
     </View>
   );
 
-  const LIFESTYLE_CATEGORY_NAMES = ['arriendo', 'mercado', 'servicios', 'agua', 'internet', 'teléfono', 'telefono', 'transporte', 'suscripciones', 'suscripción'];
-  
-  const lifestyleCategoryIds = categories
-    .filter(cat => LIFESTYLE_CATEGORY_NAMES.some(lifestyle => cat.name.toLowerCase().includes(lifestyle)))
-    .map(cat => cat.id);
-  
-  const lifestyleTransactions = transactions.filter(transaction => 
-    lifestyleCategoryIds.includes(transaction.category_id)
-  );
-  
-  const normalTransactions = transactions.filter(transaction => 
-    !lifestyleCategoryIds.includes(transaction.category_id)
-  );
+  // Separar transacciones por el campo lifestyle de la API
+  const lifestyleTransactions = transactions.filter(t => t.lifestyle === true);
+  const normalTransactions = transactions.filter(t => t.lifestyle !== true);
 
   const normalCategoryTotals: CategoryWithTotal[] = categories
-    .filter(cat => !lifestyleCategoryIds.includes(cat.id))
     .map(cat => {
+      // Solo sumar transacciones normales (no lifestyle)
       const total = normalTransactions
         .filter(t => t.category_id === cat.id)
         .reduce((sum, t) => sum + t.amount, 0);
@@ -135,7 +122,6 @@ export default function DashboardScreen() {
   }));
 
   const lifestyleCategoryTotals: CategoryWithTotal[] = categories
-    .filter(cat => lifestyleCategoryIds.includes(cat.id))
     .map(cat => {
       const total = lifestyleTransactions
         .filter(t => t.category_id === cat.id)

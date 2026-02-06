@@ -11,18 +11,14 @@ import {
   Alert,
 } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { setTransactionAsRecurring, removeRecurringTransaction, updateRecurringFrequency } from '../store/slices/lifestyleSlice';
-import { addTransactionLocal, deleteTransactionThunk } from '../store/slices/transactionsSlice';
+import { createTransaction, deleteTransactionThunk, updateTransactionThunk } from '../store/slices/transactionsSlice';
 import { useTranslation } from 'react-i18next';
-import { Transaction } from '../types';
+import { Transaction, FrequencyType } from '../types';
 
 interface LifestyleModalProps {
   visible: boolean;
   onClose: () => void;
 }
-
-// Nombres de categorías de estilo de vida para filtrar
-const LIFESTYLE_CATEGORY_NAMES = ['arriendo', 'mercado', 'servicios', 'agua', 'internet', 'teléfono', 'telefono', 'transporte', 'suscripciones', 'suscripción', 'rent', 'groceries', 'utilities', 'water', 'phone', 'subscription'];
 
 const FREQUENCIES = [
   { id: 'monthly', labelKey: 'lifestyle.frequency.monthly' },
@@ -35,69 +31,49 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
   const theme = useAppSelector((state) => state.theme.mode);
   const transactions = useAppSelector((state) => state.transactions?.list || []);
   const categories = useAppSelector((state) => state.categories?.list || []);
-  const recurringIds = useAppSelector((state) => state.lifestyle?.recurringTransactionIds || []);
-  const frequencyConfig = useAppSelector((state) => state.lifestyle?.frequencyConfig || {});
   const dispatch = useAppDispatch();
   const isDark = theme === 'dark';
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [frequency, setFrequency] = useState<'monthly' | 'weekly' | 'yearly'>('monthly');
+  const [frequency, setFrequency] = useState<FrequencyType>('monthly');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  // Filtrar categorías de estilo de vida (del sistema de categorías existente)
-  const lifestyleCategories = useMemo(() => {
-    return categories.filter(cat => 
-      LIFESTYLE_CATEGORY_NAMES.some(name => 
-        cat.name.toLowerCase().includes(name.toLowerCase())
-      )
-    );
-  }, [categories]);
-
-  // Obtener transacciones recurrentes (de estilo de vida)
-  const recurringTransactions = useMemo(() => {
+  // Transacciones de estilo de vida (lifestyle === true desde la API)
+  const lifestyleTransactions = useMemo(() => {
     return transactions
-      .filter(t => recurringIds.includes(t.id))
+      .filter(t => t.lifestyle === true)
       .map(t => ({
         ...t,
         category: categories.find(c => c.id === t.category_id),
-        frequency: frequencyConfig[t.id]?.frequency || 'monthly',
       }))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, recurringIds, frequencyConfig, categories]);
+  }, [transactions, categories]);
+
+  // Transacciones con frecuencia (recurrentes)
+  const recurringTransactions = useMemo(() => {
+    return lifestyleTransactions.filter(t => t.frequency && t.frequency !== 'none');
+  }, [lifestyleTransactions]);
 
   // Calcular total mensual estimado
   const totalMonthly = useMemo(() => {
     return recurringTransactions.reduce((sum, t) => {
-      const freq = frequencyConfig[t.id]?.frequency || 'monthly';
-      if (freq === 'monthly') return sum + t.amount;
-      if (freq === 'weekly') return sum + (t.amount * 4);
-      if (freq === 'yearly') return sum + (t.amount / 12);
-      return sum;
+      const freq = t.frequency;
+      if (freq === 'monthly' || freq === 'month') return sum + t.amount;
+      if (freq === 'weekly' || freq === 'week') return sum + (t.amount * 4);
+      if (freq === 'yearly' || freq === 'year') return sum + (t.amount / 12);
+      if (freq === 'day') return sum + (t.amount * 30);
+      return sum + t.amount;
     }, 0);
-  }, [recurringTransactions, frequencyConfig]);
+  }, [recurringTransactions]);
 
-  // Transacciones de estilo de vida (por categoría) que NO son recurrentes aún
-  const lifestyleTransactions = useMemo(() => {
-    return transactions
-      .filter(transaction => {
-        // Excluir las que ya son recurrentes
-        if (recurringIds.includes(transaction.id)) return false;
-        
-        const category = categories.find(c => c.id === transaction.category_id);
-        if (!category) return false;
-        return LIFESTYLE_CATEGORY_NAMES.some(name => 
-          category.name.toLowerCase().includes(name.toLowerCase())
-        );
-      })
-      .map(t => ({
-        ...t,
-        category: categories.find(c => c.id === t.category_id),
-      }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  // Transacciones lifestyle sin frecuencia (no recurrentes aún)
+  const nonRecurringLifestyle = useMemo(() => {
+    return lifestyleTransactions
+      .filter(t => !t.frequency || t.frequency === 'none')
       .slice(0, 10);
-  }, [transactions, categories, recurringIds]);
+  }, [lifestyleTransactions]);
 
   const totalLifestyleTransactions = useMemo(() => {
     return lifestyleTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -127,43 +103,40 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
     const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
     if (editingTransaction) {
-      // Actualizar frecuencia de transacción existente
-      dispatch(updateRecurringFrequency({
-        transactionId: editingTransaction.id,
+      // Actualizar transacción existente vía API
+      dispatch(updateTransactionThunk({
+        ...editingTransaction,
+        description: description || selectedCategory?.name || '',
+        amount: amountNum,
+        category_id: selectedCategoryId,
         frequency,
+        lifestyle: true,
       }));
     } else {
-      // Crear nueva transacción recurrente
-      const newTransaction = {
-        id: Date.now(),
+      // Crear nueva transacción lifestyle vía API
+      dispatch(createTransaction({
         description: description || selectedCategory?.name || '',
         amount: amountNum,
         category_id: selectedCategoryId,
         account_id: 1,
         user_id: '',
         date: now,
-        transaction_type: 'expense' as const,
-        created_at: now,
-        updated_at: now,
-      };
-      
-      dispatch(addTransactionLocal(newTransaction));
-      
-      // Marcar como recurrente
-      dispatch(setTransactionAsRecurring({
-        transactionId: newTransaction.id,
+        transaction_type: 'expense',
+        notification: false,
+        notification_date: null,
         frequency,
+        lifestyle: true,
       }));
     }
 
     resetForm();
   };
 
-  const handleEdit = (transaction: Transaction & { frequency?: string }) => {
+  const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setDescription(transaction.description || '');
     setAmount(transaction.amount.toString());
-    setFrequency((transaction.frequency as 'monthly' | 'weekly' | 'yearly') || 'monthly');
+    setFrequency(transaction.frequency || 'monthly');
     setSelectedCategoryId(transaction.category_id);
   };
 
@@ -177,7 +150,6 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
           text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
-            dispatch(removeRecurringTransaction(transactionId));
             dispatch(deleteTransactionThunk(transactionId));
           },
         },
@@ -185,7 +157,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
     );
   };
 
-  // Marcar una transacción existente como recurrente
+  // Marcar una transacción existente como recurrente (actualizar vía API)
   const handleMakeRecurring = (transaction: Transaction) => {
     Alert.alert(
       t('lifestyle.alerts.makeRecurringTitle') || 'Hacer Recurrente',
@@ -195,9 +167,10 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
         {
           text: t('common.confirm') || 'Confirmar',
           onPress: () => {
-            dispatch(setTransactionAsRecurring({
-              transactionId: transaction.id,
+            dispatch(updateTransactionThunk({
+              ...transaction,
               frequency: 'monthly',
+              lifestyle: true,
             }));
           },
         },
@@ -235,7 +208,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
               {t('common.category')}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-              {lifestyleCategories.map((category) => (
+              {categories.filter(c => c.transaction_type === 'expense').map((category) => (
                 <TouchableOpacity
                   key={category.id}
                   onPress={() => setSelectedCategoryId(category.id)}
@@ -355,7 +328,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
             )}
 
             {/* Lifestyle Transactions (not yet recurring) */}
-            {lifestyleTransactions.length > 0 && (
+            {nonRecurringLifestyle.length > 0 && (
               <View style={styles.transactionsList}>
                 <View style={styles.transactionsHeader}>
                   <Text style={[styles.sectionTitle, isDark ? styles.textWhite : styles.textDark]}>
@@ -367,7 +340,7 @@ export default function LifestyleModal({ visible, onClose }: LifestyleModalProps
                     </Text>
                   </View>
                 </View>
-                {lifestyleTransactions.map((transaction) => (
+                {nonRecurringLifestyle.map((transaction) => (
                   <TouchableOpacity
                     key={transaction.id}
                     onPress={() => handleMakeRecurring(transaction)}
